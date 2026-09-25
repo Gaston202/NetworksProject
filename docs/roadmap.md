@@ -5,15 +5,16 @@ visit-lifecycle so any cut lands on the right-hand side.
 
 ## Week 1 — Foundations (backend core + VMs)
 
-- [ ] Scaffold monorepo: `backend/` (FastAPI + uvicorn + pydantic + SQLAlchemy),
+- [x] Scaffold monorepo: `backend/` (FastAPI + uvicorn + pydantic + SQLAlchemy),
       `frontend/` (Vite + React + TS + Tailwind), `deploy/`
-- [ ] PostgreSQL schema + Alembic migration (all entities from
-      [domain-model](domain-model.md))
-- [ ] Auth: register/login, JWT issue, role-guard dependency
-- [ ] Seed script: 5 demo users, departments, doctors, slots, medications
+- [x] PostgreSQL schema + Alembic migration (all entities from
+      [domain-model](domain-model.md)) — generated & verified against SQLite dev DB
+- [x] Auth: register/login, JWT issue, role-guard dependency (verified: 401/403/201)
+- [x] Seed script: demo users, departments, doctors, slots, medications
 - [ ] Provision both VMs: NAT network, static IPs, Ubuntu Server (Python + PG),
-      Ubuntu Desktop (nginx)
+      Ubuntu Desktop (nginx) — scripts ready in `deploy/`, see `deploy/README.md`
 - [ ] `GET /api/health` returning 200 from `10.0.2.10:8000` **across the VMs**
+      (passes locally: `curl http://localhost:8000/api/health`)
 
 **Exit criterion:** API live on the server VM, database migrated, demo accounts
 seeded.

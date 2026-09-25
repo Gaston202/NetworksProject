@@ -7,11 +7,14 @@ course grades. Seed accounts are created by the backend seed script.
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | `admin@hms.local` | *(set in seed script)* |
-| Doctor | `doctor@hms.local` | 〃 |
-| Nurse | `nurse@hms.local` | 〃 |
-| Pharmacist | `pharmacist@hms.local` | 〃 |
-| Patient | `patient@hms.local` | 〃 |
+| Admin | `admin@hms.example.com` | *(set in seed script)* |
+| Doctor | `amina.haddad@hms.example.com` | 〃 |
+| Nurse | `nurse@hms.example.com` | 〃 |
+| Pharmacist | `pharmacist@hms.example.com` | 〃 |
+| Patient | `patient@hms.example.com` | 〃 |
+
+Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
+`salma.trabelsi@hms.example.com` (Pediatrics), `leila.mansour@hms.example.com` (patient).
 
 ## Pre-flight (before starting)
 
