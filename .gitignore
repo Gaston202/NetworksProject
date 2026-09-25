@@ -1,0 +1,33 @@
+# Python (backend/)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node (frontend/)
+node_modules/
+dist/
+.vite/
+*.local
+
+# Environment & secrets — never commit real values
+.env
+.env.*
+!.env.example
+
+# Editors & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# VirtualBox / VM artifacts
+*.ova
+*.vdi
+*.vbox-prev
