@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.db.base import get_db
-from app.models import DoctorProfile, PatientProfile, User, UserRole
+from app.models import PatientProfile, User, UserRole
 from app.schemas import PatientOut, UserOut, UserUpdateIn
 
 router = APIRouter()

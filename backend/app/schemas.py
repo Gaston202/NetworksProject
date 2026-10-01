@@ -3,8 +3,6 @@ from datetime import date as date_t, datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.user import UserRole
-
 
 # --- Auth (ADR-0006) ---
 

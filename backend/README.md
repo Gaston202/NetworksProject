@@ -22,10 +22,6 @@ copy .env.example .env                          # defaults to localhost:5433
 .venv/Scripts/uvicorn app.main:app --reload     # http://localhost:8000/docs
 ```
 
-Docker-less fallback: set `DATABASE_URL=sqlite:///./hms-dev.db` in `.env`
-(`.venv/bin` in place of `.venv/Scripts` on Linux) — the migration and seed
-run identically, since schema definitions are portable.
-
 ## End-to-end smoke test (the demo story over HTTP)
 
 With the database migrated + seeded and uvicorn running on `:8000`:
@@ -46,9 +42,8 @@ success.
 .venv/bin/alembic upgrade head
 ```
 
-The URL comes from `DATABASE_URL` in `.env` — PostgreSQL in Docker on the host,
-PostgreSQL on the VM in deployment, or SQLite for a quick Docker-less run.
-Keep schema definitions valid on both PostgreSQL and SQLite.
+The URL comes from `DATABASE_URL` in `.env` — Dockerized PostgreSQL locally,
+native PostgreSQL on the Ubuntu Server VM in deployment.
 
 ## Structure
 

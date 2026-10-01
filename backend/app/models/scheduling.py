@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum as StdEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -40,14 +40,12 @@ class Appointment(Base):
     __tablename__ = "appointments"
     # ADR-0009 invariant 1: at most one *active* appointment per slot (DB level).
     # A cancelled appointment releases its slot, so uniqueness holds only while
-    # the status is not 'cancelled' — a partial unique index works on both
-    # SQLite and PostgreSQL.
+    # the status is not 'cancelled' — a partial unique index.
     __table_args__ = (
         Index(
             "uq_appointments_active_slot",
             "slot_id",
             unique=True,
-            sqlite_where=text("status <> 'cancelled'"),
             postgresql_where=text("status <> 'cancelled'"),
         ),
     )
