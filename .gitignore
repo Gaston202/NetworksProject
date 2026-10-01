@@ -10,6 +10,9 @@ venv/
 .coverage
 htmlcov/
 
+# Local dev databases (never commit — seed them locally)
+*.db
+
 # Node (frontend/)
 node_modules/
 dist/

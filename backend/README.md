@@ -33,7 +33,7 @@ app/
 ├── main.py            # app entrypoint: CORS + routers
 ├── core/              # config (env) + security (bcrypt, JWT)
 ├── db/base.py         # engine, session, Base, get_db
-├── models/            # 13 tables (user, scheduling, clinical, pharmacy, billing)
+├── models/            # 8 tables (user, scheduling, clinical, billing)
 ├── api/
 │   ├── deps.py        # get_current_user, require_role (ADR-0006/0007)
 │   └── routes/        # health, auth (more modules come in weeks 2–3)

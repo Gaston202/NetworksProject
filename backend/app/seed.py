@@ -2,6 +2,8 @@
 
 Run:  python -m app.seed        (from the backend/ directory)
 Accounts and password come from SEED_PASSWORD in .env (default: hms-demo-1234).
+
+Three-role scope (ADR-0007): admin, doctor, patient. No nurse/pharmacist/meds.
 """
 from datetime import datetime, timedelta
 
@@ -12,7 +14,6 @@ from app.models import (
     AvailabilitySlot,
     Department,
     DoctorProfile,
-    Medication,
     PatientProfile,
     User,
     UserRole,
@@ -28,26 +29,12 @@ DOCTORS = [
 
 STAFF = [
     ("Ghassen Admin", "admin@hms.example.com", UserRole.ADMIN),
-    ("Nour Nurse", "nurse@hms.example.com", UserRole.NURSE),
-    ("Youssef Pharmacist", "pharmacist@hms.example.com", UserRole.PHARMACIST),
 ]
 
 PATIENTS = [
     ("Sami Patient", "patient@hms.example.com"),
     ("Leila Mansour", "leila.mansour@hms.example.com"),
 ]
-
-MEDICATIONS = [
-    # (name, unit_price, stock_quantity, low_stock_threshold)
-    ("Paracetamol 500mg", 2.50, 200, 20),
-    ("Amoxicillin 250mg", 5.00, 80, 15),
-    ("Ibuprofen 400mg", 3.20, 120, 20),
-    ("Omeprazole 20mg", 6.75, 8, 10),   # below threshold -> low-stock warning
-    ("Ventolin inhaler", 12.00, 25, 5),
-    ("Insulin glargine", 45.00, 0, 3),  # zero stock -> dispensing must refuse
-]
-
-CONSULTATION_FEE = 25.00  # stored here; billing (week 3) reads it from settings
 
 
 def seed() -> None:
@@ -83,10 +70,6 @@ def seed() -> None:
             user.patient_profile = PatientProfile(phone="+216-55-000-000")
             db.add(user)
 
-        for name, price, stock, threshold in MEDICATIONS:
-            db.add(Medication(name=name, unit_price=price,
-                              stock_quantity=stock, low_stock_threshold=threshold))
-
         db.commit()  # profiles need ids before slot creation
 
         # Slots: today + 6 days, 09:00-12:00 and 14:00-16:00, 30 minutes each.
@@ -108,7 +91,8 @@ def seed() -> None:
         db.commit()
 
         print(f"Seeded: {len(departments)} departments, {len(doctors) + len(STAFF)} staff, "
-              f"{len(PATIENTS)} patients, {len(MEDICATIONS)} medications, {len(slots)} slots")
+              f"{len(PATIENTS)} patients, {len(slots)} slots "
+              f"(consultation fee: {settings.consultation_fee})")
         print(f"Demo password for every seeded account: {settings.seed_password}")
     finally:
         db.close()

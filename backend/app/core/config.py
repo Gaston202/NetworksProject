@@ -14,6 +14,9 @@ class Settings(BaseSettings):
 
     seed_password: str = "hms-demo-1234"
 
+    # Derived billing (ADR-0012): every completed appointment invoices this fee.
+    consultation_fee: float = 25.0
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

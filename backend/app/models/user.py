@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from enum import Enum as StdEnum
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -11,8 +11,6 @@ from app.db.base import Base
 class UserRole(str, StdEnum):
     ADMIN = "admin"
     DOCTOR = "doctor"
-    NURSE = "nurse"
-    PHARMACIST = "pharmacist"
     PATIENT = "patient"
 
 
@@ -26,6 +24,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(
         Enum(*[r.value for r in UserRole], name="user_role", native_enum=False, length=20)
     )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     doctor_profile: Mapped["DoctorProfile | None"] = relationship(

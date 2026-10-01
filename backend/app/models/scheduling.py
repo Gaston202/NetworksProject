@@ -10,12 +10,13 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.user import DoctorProfile
-    from app.models.clinical import Consultation, Vitals
+    from app.models.clinical import Consultation
     from app.models.billing import Invoice
 
 
 class AppointmentStatus(str, StdEnum):
     BOOKED = "booked"
+    CONSULTED = "consulted"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
@@ -55,5 +56,4 @@ class Appointment(Base):
     consultation: Mapped["Consultation | None"] = relationship(
         back_populates="appointment", uselist=False
     )
-    vitals: Mapped["Vitals | None"] = relationship(back_populates="appointment", uselist=False)
     invoice: Mapped["Invoice | None"] = relationship(back_populates="appointment", uselist=False)

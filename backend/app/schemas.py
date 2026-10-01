@@ -45,7 +45,7 @@ class StaffCreateIn(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    role: str  # admin | doctor | nurse | pharmacist
+    role: str  # admin | doctor
     department_id: int | None = None
     specialty: str | None = None
 
