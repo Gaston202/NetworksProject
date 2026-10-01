@@ -15,6 +15,19 @@ copy .env.example .env                          # then edit if needed
 .venv/bin/uvicorn app.main:app --reload         # http://localhost:8000/docs
 ```
 
+## End-to-end smoke test (the demo story over HTTP)
+
+With the database migrated + seeded and uvicorn running on `:8000`:
+
+```bash
+.venv/bin/python tests/e2e_smoke.py
+```
+
+It drives the four-act demo story (book → consult → complete → paid) and the
+guard paths (role guards, per-row ownership, slot uniqueness, invoice
+idempotency, deactivation) — 31 assertions, `ALL 31 E2E STEPS PASSED` on
+success.
+
 ## Migrations (Alembic)
 
 ```bash

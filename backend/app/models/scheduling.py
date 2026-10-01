@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum as StdEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -38,11 +38,22 @@ class AvailabilitySlot(Base):
 
 class Appointment(Base):
     __tablename__ = "appointments"
-    # ADR-0009 invariant 1: one appointment per slot, enforced at the DB level.
-    __table_args__ = (UniqueConstraint("slot_id", name="uq_appointments_slot"),)
+    # ADR-0009 invariant 1: at most one *active* appointment per slot (DB level).
+    # A cancelled appointment releases its slot, so uniqueness holds only while
+    # the status is not 'cancelled' — a partial unique index works on both
+    # SQLite and PostgreSQL.
+    __table_args__ = (
+        Index(
+            "uq_appointments_active_slot",
+            "slot_id",
+            unique=True,
+            sqlite_where=text("status <> 'cancelled'"),
+            postgresql_where=text("status <> 'cancelled'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    slot_id: Mapped[int] = mapped_column(ForeignKey("availability_slots.id"), unique=True)
+    slot_id: Mapped[int] = mapped_column(ForeignKey("availability_slots.id"), index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patient_profiles.id"), index=True)
     doctor_id: Mapped[int] = mapped_column(ForeignKey("doctor_profiles.id"), index=True)
     status: Mapped[str] = mapped_column(

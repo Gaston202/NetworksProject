@@ -79,10 +79,13 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['doctor_id'], ['doctor_profiles.id'], ),
     sa.ForeignKeyConstraint(['patient_id'], ['patient_profiles.id'], ),
     sa.ForeignKeyConstraint(['slot_id'], ['availability_slots.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('slot_id'),
-    sa.UniqueConstraint('slot_id', name='uq_appointments_slot')
+    sa.PrimaryKeyConstraint('id')
     )
+    # One *active* appointment per slot: uniqueness excludes cancelled rows so
+    # cancellation frees the slot for rebooking (ADR-0009 invariant 1).
+    op.create_index('uq_appointments_active_slot', 'appointments', ['slot_id'], unique=True,
+    sqlite_where=sa.text("status <> 'cancelled'"),
+    postgresql_where=sa.text("status <> 'cancelled'"))
     op.create_index(op.f('ix_appointments_doctor_id'), 'appointments', ['doctor_id'], unique=False)
     op.create_index(op.f('ix_appointments_patient_id'), 'appointments', ['patient_id'], unique=False)
     op.create_table('consultations',
@@ -117,6 +120,7 @@ def downgrade() -> None:
     op.drop_table('consultations')
     op.drop_index(op.f('ix_appointments_patient_id'), table_name='appointments')
     op.drop_index(op.f('ix_appointments_doctor_id'), table_name='appointments')
+    op.drop_index('uq_appointments_active_slot', table_name='appointments')
     op.drop_table('appointments')
     op.drop_index(op.f('ix_availability_slots_starts_at'), table_name='availability_slots')
     op.drop_index(op.f('ix_availability_slots_doctor_id'), table_name='availability_slots')
