@@ -2,25 +2,36 @@
 
 FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL (ADR-0003/0004).
 
-## Local development (Windows host, SQLite)
+## Local development (Dockerized PostgreSQL)
+
+The dev database runs in Docker (`docker-compose.yml`): `postgres:16-alpine`
+on host port **5433** with a named volume, so data survives
+`docker compose down`. Port 5433 rather than the usual 5432 only because a
+Windows postgres service already occupies 5432 on this host; the Ubuntu
+Server VM in deployment uses 5432 normally.
 
 ```bash
 cd backend
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt   # Windows
-# .venv/bin/pip ...                             # Linux
-copy .env.example .env                          # then edit if needed
+docker compose up -d                            # start the database (health-checked)
+copy .env.example .env                          # defaults to localhost:5433
 
-.venv/bin/python -m app.seed                    # demo data (SQLite dev db)
-.venv/bin/uvicorn app.main:app --reload         # http://localhost:8000/docs
+.venv/Scripts/alembic upgrade head              # create the 8-table schema
+.venv/Scripts/python -m app.seed                # demo data
+.venv/Scripts/uvicorn app.main:app --reload     # http://localhost:8000/docs
 ```
+
+Docker-less fallback: set `DATABASE_URL=sqlite:///./hms-dev.db` in `.env`
+(`.venv/bin` in place of `.venv/Scripts` on Linux) — the migration and seed
+run identically, since schema definitions are portable.
 
 ## End-to-end smoke test (the demo story over HTTP)
 
 With the database migrated + seeded and uvicorn running on `:8000`:
 
 ```bash
-.venv/bin/python tests/e2e_smoke.py
+.venv/Scripts/python tests/e2e_smoke.py
 ```
 
 It drives the four-act demo story (book → consult → complete → paid) and the
@@ -35,9 +46,9 @@ success.
 .venv/bin/alembic upgrade head
 ```
 
-The URL comes from `DATABASE_URL` in `.env` — SQLite locally, PostgreSQL on the VM.
-Generate the initial revision once PostgreSQL is reachable (the provision script
-does this automatically).
+The URL comes from `DATABASE_URL` in `.env` — PostgreSQL in Docker on the host,
+PostgreSQL on the VM in deployment, or SQLite for a quick Docker-less run.
+Keep schema definitions valid on both PostgreSQL and SQLite.
 
 ## Structure
 
