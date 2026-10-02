@@ -10,7 +10,9 @@ class Settings(BaseSettings):
     mongodb_url: str
     mongodb_db: str = "hms"
 
-    secret_key: str = "dev-only-insecure-secret-change-me"
+    # No default either: a missing SECRET_KEY must not fall back to a
+    # publicly known value anyone could sign admin tokens with.
+    secret_key: str
     access_token_expire_minutes: int = 60
 
     # Origins the SPA may be served from (CORS allow-list)
