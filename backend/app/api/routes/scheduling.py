@@ -217,7 +217,8 @@ async def list_doctor_slots(doctor_id: int,
     booked_slot_ids = {
         appointment["slot_id"] for appointment in
         (await db["appointments"].find(
-            {"slot_id": {"$exists": True}}).to_list(length=None))}
+            {"doctor_id": doctor_id, "slot_id": {"$exists": True}}
+        ).to_list(length=None))}
     return [
         SlotOut(
             id=slot["_id"], doctor_id=slot["doctor_id"],
@@ -421,6 +422,10 @@ async def cancel_appointment(appointment_id: int,
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 "Patients may only cancel while the appointment is booked")
+        if appointment["starts_at"] <= utcnow():
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Patients may only cancel future appointments")
     elif user["role"] == UserRole.ADMIN.value:
         if appointment["status"] in (AppointmentStatus.COMPLETED.value,
                                      AppointmentStatus.CANCELLED.value):
