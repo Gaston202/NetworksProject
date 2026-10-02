@@ -10,6 +10,12 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$REPO_DIR/backend"
 
+# The systemd unit's User= is replaced with the account that owns the repo
+# (SUDO_USER when the script runs under sudo, else the repo dir's owner).
+# A hardcoded User= made systemd exit 217/USER on any VM whose first user
+# isn't 'ubuntu' — and the service user must be able to read the .env.
+RUN_USER="${SUDO_USER:-$(stat -c '%U' "$REPO_DIR")}"
+
 MONGODB_URL="${MONGODB_URL:?Set MONGODB_URL first, e.g. sudo env MONGODB_URL='mongodb+srv://...' bash $0}"
 
 echo "==> Installing system packages (no database packages on this VM)"
@@ -28,6 +34,7 @@ CORS_ORIGINS=http://10.0.2.20,http://localhost:5173
 SEED_PASSWORD=hms-demo-1234
 ENV
   chmod 600 "$BACKEND_DIR/.env"
+  chown "$RUN_USER": "$BACKEND_DIR/.env"
 else
   echo "    .env already exists — leaving it alone"
 fi
@@ -43,7 +50,7 @@ cd "$BACKEND_DIR"
 echo "==> Installing systemd service"
 cp "$REPO_DIR/deploy/hms-api.service" /etc/systemd/system/hms-api.service
 # The unit references this repo's paths; fix them for this machine:
-sed -i "s|__REPO__|$REPO_DIR|g" /etc/systemd/system/hms-api.service
+sed -i "s|__REPO__|$REPO_DIR|g; s|__REPO_USER__|$RUN_USER|g" /etc/systemd/system/hms-api.service
 systemctl daemon-reload
 systemctl enable --now hms-api
 
