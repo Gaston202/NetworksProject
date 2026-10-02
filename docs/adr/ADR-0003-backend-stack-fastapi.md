@@ -21,8 +21,8 @@ Rationale:
 
 ## Consequences
 
-- Domain models use SQLModel or SQLAlchemy + Pydantic schemas.
-- Migrations via Alembic.
+- Data access is **Motor** (async MongoDB driver, ADR-0004); Pydantic enforces request/response shapes at the boundary; endpoints are `async def`.
+- No schema migrations: `app/db/indexes.py` ensures MongoDB's unique indexes at startup (idempotent).
 - The owner will be learning Python backend idioms rather than Node patterns —
   trade-off accepted for the demo value of Swagger.
 - Runtime is managed as a `systemd` service (`hms-api.service`), not a bare shell.

@@ -27,20 +27,26 @@ erDiagram
 | `Department` | id, name | Owned by Admin. |
 | `AvailabilitySlot` | id, doctor_id, starts_at, ends_at | Generated from a doctor's schedule. |
 | `Appointment` | id, slot_id (unique), patient_id, doctor_id, status | Status: `booked`/`consulted`/`completed`/`cancelled`/`no_show`. |
-| `Consultation` | id, appointment_id, diagnosis, notes, prescription | Written by the appointment's doctor; prescription is free text. |
+| `Consultation` | (embedded in Appointment) diagnosis, notes, prescription | Written by the appointment's doctor; prescription is free text. Stored as an Appointment subdocument; API `id` == `appointment_id`. |
 | `Invoice` | id, appointment_id (unique), total, status | Created on `completed`; total = consultation fee; status `unpaid`/`paid`. |
+
+Storage: MongoDB Atlas (ADR-0004) in 8 collections; `slot_id` is unique-and-sparse
+and appointments copy their slot times, so displays never join.
 
 ## Invariants (enforced by the backend + database)
 
-1. **Slot exclusivity** — one appointment per slot (unique constraint).
-2. **Booking race safety** — booking happens in a transaction; a lost race returns
+1. **Slot exclusivity** — one appointment per slot (unique sparse index; a
+   cancelled appointment `$unset`s its slot_id, releasing it).
+2. **Booking race safety** — booking inserts against the slot's unique index; a
+   lost race returns
    "slot taken," never a duplicate.
 3. **Ownership** — a patient reads only their own appointments, consultations,
    invoices (per-row check, not just role check).
 4. **Clinical write rules** — only the appointment's own doctor writes its
    consultation.
 5. **Derived billing** — invoices exist only because a visit completed; the total is
-   the consultation fee; no hand-authored invoices.
+   the consultation fee; no hand-authored invoices. The unique
+   `invoices.appointment_id` index makes derivation idempotent.
 6. **Referential safety** — a department with doctors can't be deleted; a slot with
    an appointment can't be deleted.
 
