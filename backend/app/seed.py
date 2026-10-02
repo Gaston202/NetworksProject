@@ -1,4 +1,6 @@
-"""Demo seed data — idempotent (safe to re-run; skips if the admin exists).
+"""Demo seed data — idempotent: skips if the seed is complete, detects and
+heals a partially-written seed (a mid-seed failure used to be misreported as
+"already present" because only the admin row was checked).
 
 Run:  .venv/Scripts/python -m app.seed        (from the backend/ directory)
 Accounts and password come from SEED_PASSWORD in .env (default: hms-demo-1234).
@@ -33,6 +35,21 @@ PATIENTS = [
     ("Leila Mansour", "leila.mansour@hms.example.com"),
 ]
 
+# Slot windows per day (start hour, hours): 09:00-12:00 and 14:00-16:00,
+# 30-minute slots. Single source of truth for both the seed loop and the
+# expected-total-slots count in the partial-seed check.
+SLOT_WINDOWS = ((9, 3), (14, 2))
+SLOTS_DAYS = 7
+
+SEED_COUNTS = {
+    "users": len(STAFF) + len(DOCTORS) + len(PATIENTS),
+    "departments": len(DEPARTMENTS),
+    "doctor_profiles": len(DOCTORS),
+    "patient_profiles": len(PATIENTS),
+    "availability_slots": (SLOTS_DAYS * len(DOCTORS)
+                           * sum(hours * 2 for _, hours in SLOT_WINDOWS)),
+}
+
 
 def _user_doc(_id: int, full_name: str, email: str, password_hash: str,
               role: str) -> dict:
@@ -50,8 +67,22 @@ def _user_doc(_id: int, full_name: str, email: str, password_hash: str,
 async def seed() -> None:
     await ensure_indexes(db)
     if await db["users"].find_one({"email": "admin@hms.example.com"}):
-        print("Seed data already present - nothing to do.")
-        return
+        # A legit install only ever GROWS these counts (no deletion endpoints
+        # for the seeded rows), so anything below the seed minimum means a
+        # mid-seed failure — reset the seeded collections and redo it fully.
+        partial = []
+        for name, expected in SEED_COUNTS.items():
+            count = await db[name].count_documents({})
+            if count < expected:
+                partial.append(f"{name}: {count} < {expected}")
+        if partial:
+            print("Partial seed detected - resetting and re-seeding:")
+            print(f"    {', '.join(partial)}")
+            for name in [*SEED_COUNTS, "counters"]:
+                await db[name].drop()
+        else:
+            print("Seed data already present - nothing to do.")
+            return
 
     password = hash_password(settings.seed_password)
 
@@ -112,9 +143,9 @@ async def seed() -> None:
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     windows: list[tuple[int, datetime, datetime]] = []
     doctor_ids = [profile["_id"] for profile in doctor_profiles]
-    for day in range(7):
+    for day in range(SLOTS_DAYS):
         base = today + timedelta(days=day)
-        for window_start_hour, window_hours in ((9, 3), (14, 2)):
+        for window_start_hour, window_hours in SLOT_WINDOWS:
             for half in range(window_hours * 2):
                 start = base + timedelta(hours=window_start_hour, minutes=30 * half)
                 for doctor_id in doctor_ids:
