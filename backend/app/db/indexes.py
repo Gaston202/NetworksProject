@@ -1,6 +1,7 @@
 """Index bootstrap (spec §3): idempotent create_index calls, run at startup.
 
-Unique indexes carry the invariants PostgreSQL's constraints carried (§4):
+Unique indexes carry the invariants the former SQL stack's constraints
+carried (§4):
 email, department name, one profile per user, exact-duplicate slot windows,
 one active appointment per slot (sparse — cancelled docs drop the field),
 one invoice per appointment.

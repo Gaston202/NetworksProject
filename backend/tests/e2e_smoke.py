@@ -1,6 +1,6 @@
 """HMS end-to-end smoke: drives the 4-act demo story over HTTP.
 
-Run against http://localhost:8000 (uvicorn, Dockerized PostgreSQL dev DB).
+Run against http://localhost:8000 (uvicorn, MongoDB Atlas dev/prod DB).
 Exit 0 = all assertions passed.
 """
 import json

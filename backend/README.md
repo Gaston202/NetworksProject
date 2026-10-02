@@ -1,30 +1,37 @@
 # HMS Backend
 
-FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL (ADR-0003/0004).
+FastAPI (async) + Motor + MongoDB Atlas (ADR-0003/0004).
 
-## Local development (Dockerized PostgreSQL)
+## Local development
 
-The dev database runs in Docker (`docker-compose.yml`): `postgres:16-alpine`
-on host port **5433** with a named volume, so data survives
-`docker compose down`. Port 5433 rather than the usual 5432 only because a
-Windows postgres service already occupies 5432 on this host; the Ubuntu
-Server VM in deployment uses 5432 normally.
+The database is the Atlas cluster configured by `MONGODB_URL` in `.env` —
+nothing to install or run locally; dev and deployment share it.
 
 ```bash
 cd backend
+copy .env.example .env          # then paste the Atlas string into MONGODB_URL
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt   # Windows
-docker compose up -d                            # start the database (health-checked)
-copy .env.example .env                          # defaults to localhost:5433
 
-.venv/Scripts/alembic upgrade head              # create the 8-table schema
-.venv/Scripts/python -m app.seed                # demo data
-.venv/Scripts/uvicorn app.main:app --reload     # http://localhost:8000/docs
+.venv/Scripts/python -m app.seed                # demo data (idempotent)
+.venv/Scripts/python -m uvicorn app.main:app --reload   # http://localhost:8000/docs
+```
+
+Indexes are ensured at app startup (`app/db/indexes.py`) — no migrations.
+
+## Reset / re-seed
+
+Atlas M0 users may not `dropDatabase`; the reset helper drops the
+collections instead (ADR-0004 note):
+
+```bash
+.venv/Scripts/python scripts/reset_demo.py      # drops every collection
+.venv/Scripts/python -m app.seed                # re-creates demo data
 ```
 
 ## End-to-end smoke test (the demo story over HTTP)
 
-With the database migrated + seeded and uvicorn running on `:8000`:
+After a reset + seed, with uvicorn running on `:8000`:
 
 ```bash
 .venv/Scripts/python tests/e2e_smoke.py
@@ -35,28 +42,19 @@ guard paths (role guards, per-row ownership, slot uniqueness, invoice
 idempotency, deactivation) — 31 assertions, `ALL 31 E2E STEPS PASSED` on
 success.
 
-## Migrations (Alembic)
-
-```bash
-.venv/bin/alembic revision --autogenerate -m "<what changed>"
-.venv/bin/alembic upgrade head
-```
-
-The URL comes from `DATABASE_URL` in `.env` — Dockerized PostgreSQL locally,
-native PostgreSQL on the Ubuntu Server VM in deployment.
-
 ## Structure
 
 ```
 app/
-├── main.py            # app entrypoint: CORS + routers
+├── main.py            # app entrypoint: CORS + routers + index-ensuring lifespan
 ├── core/              # config (env) + security (bcrypt, JWT)
-├── db/base.py         # engine, session, Base, get_db
-├── models/            # 8 tables (user, scheduling, clinical, billing)
+├── db/mongo.py        # Motor client, db handle, counters, helpers
+├── db/indexes.py      # unique-index bootstrap (the former DB constraints)
+├── domain.py          # role/status enums (values unchanged)
 ├── api/
 │   ├── deps.py        # get_current_user, require_role (ADR-0006/0007)
-│   └── routes/        # health, auth (more modules come in weeks 2–3)
-├── schemas.py         # Pydantic request/response models
+│   └── routes/        # health, auth, admin, scheduling, clinical, billing
+├── schemas.py         # Pydantic request/response models (unchanged)
 └── seed.py            # demo data (python -m app.seed)
 ```
 
@@ -64,4 +62,7 @@ app/
 
 - Passwords: bcrypt, never stored plain.
 - JWT HS256; `SECRET_KEY` must be replaced in deployment (provision script does).
-- Plain HTTP is a documented course-scoped limitation (ADR-0002).
+- Atlas credentials live only in `.env` / the VM env; the connection is TLS
+  (`mongodb+srv`), gated by the Atlas network allow-list (ADR-0004).
+- Plain HTTP between browser and API is a documented course-scoped limitation
+  (ADR-0002).

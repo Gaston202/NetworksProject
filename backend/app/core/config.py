@@ -10,9 +10,6 @@ class Settings(BaseSettings):
     mongodb_url: str
     mongodb_db: str = "hms"
 
-    # Transitional: still used by the SQLAlchemy modules until Task 7
-    # lands; removed with the SQLA stack in the final task.
-    database_url: str = "postgresql+psycopg2://hms:hms_dev_password@localhost:5433/hms"
     secret_key: str = "dev-only-insecure-secret-change-me"
     access_token_expire_minutes: int = 60
 

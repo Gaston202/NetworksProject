@@ -75,7 +75,7 @@ async def write_consultation(appointment_id: int, payload: ConsultationCreateIn,
                   "consultation": consultation}})
     if result.matched_count != 1:
         # Lost the guarded race — produce exactly the conflicts the unique
-        # constraint produced in PostgreSQL (spec §4 row 4).
+        # constraint produced on the former SQL stack (spec §4 row 4).
         current = await db["appointments"].find_one({"_id": appointment_id})
         if current["status"] != AppointmentStatus.CONSULTED.value:
             raise HTTPException(
