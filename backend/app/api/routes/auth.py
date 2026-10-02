@@ -53,6 +53,9 @@ async def login(payload: LoginIn,
         verify_password, payload.password, user["password_hash"])
     if not valid:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+    # Checked after the password so the message doesn't reveal which emails exist.
+    if not user["is_active"]:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account is deactivated")
     return _token_for(user)
 
 
