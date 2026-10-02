@@ -17,6 +17,7 @@ API (appointments, clinical, billing, admin) is in progress — see the
 | [docs/glossary.md](docs/glossary.md) | Ubiquitous language — the terms the code must use |
 | [docs/adr/](docs/adr/) | 16 architecture decision records (ADR-0013 withdrawn 2026-10-01; ADR-0016 supersedes 0002/0005) |
 | [docs/network-topology.md](docs/network-topology.md) | VMs, IPs, ports, traffic flows (graded) |
+| [docs/labserver-setup-log.md](docs/labserver-setup-log.md) | How LabServer was deployed: steps, outputs, concepts |
 | [docs/demo-walkthrough.md](docs/demo-walkthrough.md) | Live demo script (graded) |
 | [docs/roadmap.md](docs/roadmap.md) | 4-week build order with exit criteria |
 
