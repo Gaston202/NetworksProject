@@ -1,16 +1,19 @@
 """HMS end-to-end smoke: drives the 4-act demo story over HTTP.
 
-Run against http://localhost:8000 (uvicorn, MongoDB Atlas dev/prod DB).
+Run against http://localhost:8000 (uvicorn, MongoDB Atlas dev/prod DB), or
+point HMS_BASE elsewhere, e.g. HMS_BASE=http://192.168.100.10/api (via nginx).
+Expects a freshly seeded database (scripts/reset_demo.py, then app.seed).
 Exit 0 = all assertions passed.
 """
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
 from datetime import date, timedelta
 
-BASE = "http://localhost:8000/api"
-PASSWORD = "hms-demo-1234"
+BASE = os.environ.get("HMS_BASE", "http://localhost:8000/api")
+PASSWORD = os.environ.get("HMS_PASSWORD", "hms-demo-1234")
 
 passed = 0
 
@@ -65,6 +68,15 @@ fresh = reg["access_token"]
 step("public registration creates a Patient (201)")
 
 # --- guards ------------------------------------------------------------------
+call("POST", "/auth/register", body={
+    "full_name": "Long Password", "email": "e2e.longpw@example.com",
+    "password": "a" * 80}, expect=422)
+step("registration with an 80-byte password -> 422 (bcrypt limit)")
+
+call("POST", "/auth/login", body={
+    "email": "patient@hms.example.com", "password": "a" * 200}, expect=401)
+step("login with an over-long password -> 401, not 500")
+
 code, _ = call("POST", "/auth/staff", token=admin, body={
     "full_name": "Should Not Exist", "email": "guard.nurse@example.com",
     "password": "unused-password-1", "role": "nurse"})
@@ -200,6 +212,16 @@ code, _ = call("DELETE", f"/departments/{dept['id']}", token=admin)
 assert code == 409, code
 step("deleting a department with doctors -> 409 (referential safety)")
 
+# --- cancellation is for future visits only -----------------------------------
+yesterday = (date.today() - timedelta(days=1)).isoformat()
+code, past_slots = call("POST", f"/doctors/{other['id']}/slots", token=admin, body={
+    "first_date": yesterday, "days": 1, "start_hour": 20,
+    "hours_per_day": 0.5}, expect=201)
+_, past_appt = call("POST", "/appointments", token=fresh,
+                    body={"slot_id": past_slots[0]["id"]}, expect=201)
+call("PATCH", f"/appointments/{past_appt['id']}/cancel", token=fresh, expect=409)
+step("patient cancelling a past appointment -> 409")
+
 # --- deactivation ---------------------------------------------------------------
 code, users = call("GET", "/users", token=admin, expect=200)
 fresh_user = next(u for u in users if u["email"] == "e2e.fresh@example.com")
@@ -208,5 +230,9 @@ call("PATCH", f"/users/{fresh_user['id']}", token=admin,
 code, _ = call("GET", "/auth/me", token=fresh)
 assert code == 401, code
 step("deactivated account's token rejected -> 401 (is_active guard)")
+
+call("POST", "/auth/login", body={
+    "email": "e2e.fresh@example.com", "password": "e2e-password-1"}, expect=401)
+step("deactivated account cannot log in -> 401")
 
 print(f"\nALL {passed} E2E STEPS PASSED")
