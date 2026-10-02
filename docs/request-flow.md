@@ -15,7 +15,7 @@ flowchart LR
     end
     subgraph SRV["LabServer · Ubuntu Server 24.04"]
         direction LR
-        UFW["ufw<br/>netfilter"]
+        UFW["Firewall<br/>ufw · netfilter"]
         NG["nginx 1.28.3<br/>:80"]
         FS[("/var/www/hms<br/>SPA files")]
         UV["uvicorn<br/>127.0.0.1:8000"]
@@ -35,7 +35,7 @@ flowchart LR
 
 | Component | Job | Where it's configured |
 |-----------|-----|-----------------------|
-| **ufw** | Kernel firewall: lets in 80 on `enp0s8` and 22 on `enp0s3` and silently drops everything else | `deploy/server-provision.sh` |
+| **Firewall** (ufw) | Kernel firewall: lets in 80 on `enp0s8` and 22 on `enp0s3` and silently drops everything else | `deploy/server-provision.sh` |
 | **nginx** | Single entry point: serves the SPA files and reverse-proxies `/api/`, `/docs`, `/openapi.json` | `deploy/nginx-setup.sh` |
 | **uvicorn** | ASGI server: parses HTTP into Python requests; listens on loopback only | `deploy/hms-api.service` |
 | **CORSMiddleware** | Cross-origin rules. Deployed traffic is same-origin, so it only matters for the Vite dev server | `backend/app/main.py` |
@@ -52,7 +52,7 @@ nginx answers on its own; the API is never involved.
 sequenceDiagram
     autonumber
     participant B as Client (Firefox)
-    participant F as ufw
+    participant F as Firewall
     participant N as nginx :80
     participant D as /var/www/hms
     B->>F: TCP SYN → 192.168.100.10:80 (intnet)
@@ -116,13 +116,13 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant C as Client (curl)
-    participant F as ufw on LabServer
+    participant F as Firewall (LabServer)
     participant U as uvicorn 127.0.0.1:8000
     C->>F: SYN 192.168.100.102:55266 → 192.168.100.10:8000
     F--xC: no allow rule → default deny = DROP (logged as UFW BLOCK)
     C->>F: SYN retransmit (×3)
     Note over C: curl: (28) Connection timed out (-m 3)
-    Note over U: Second layer: bound to 127.0.0.1 only, so with ufw off the kernel would reply RST ("connection refused")
+    Note over U: Second layer: bound to 127.0.0.1 only, so with the firewall off the kernel would reply RST ("connection refused")
 ```
 
 Real kernel log entry for this attempt:
@@ -143,4 +143,4 @@ Real kernel log entry for this attempt:
 | 409 | handler + unique index | slot already taken, email already registered |
 | 422 | pydantic validation | missing fields, password over 72 bytes |
 | 502 | nginx | uvicorn not running behind the proxy |
-| timeout | ufw (DROP) | any port other than 80/22 |
+| timeout | Firewall (DROP) | any port other than 80/22 |
