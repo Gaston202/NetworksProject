@@ -24,7 +24,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# The SPA lives on a different origin (nginx on hms-desktop) — ADR-0011.
+# Deployed, nginx serves the SPA and proxies /api from one origin (ADR-0016),
+# so CORS only matters for the Vite dev server on another port.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

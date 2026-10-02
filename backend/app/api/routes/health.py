@@ -10,7 +10,7 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health", response_model=HealthOut)
 async def health(db: AsyncIOMotorDatabase = Depends(get_db)) -> HealthOut:
-    """Week 1 exit criterion: 200 from http://10.0.2.10:8000/api/health across the VMs."""
+    """Liveness + Atlas reachability: 200 from http://192.168.100.10/api/health on a client."""
     try:
         await db.client.admin.command("ping")
     except PyMongoError:

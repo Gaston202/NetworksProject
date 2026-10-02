@@ -1,6 +1,6 @@
 # ADR-0005: VirtualBox network mode — NAT Network with static addresses
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0016](ADR-0016-lab-topology-server-plus-two-clients.md) (2026-10-02)
 - **Date:** 2026-09-25
 - **Deciders:** Project owner, Claude
 

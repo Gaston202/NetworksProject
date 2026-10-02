@@ -10,11 +10,14 @@ class Settings(BaseSettings):
     mongodb_url: str
     mongodb_db: str = "hms"
 
-    secret_key: str = "dev-only-insecure-secret-change-me"
+    # No default either: a missing SECRET_KEY must not fall back to a
+    # publicly known value anyone could sign admin tokens with.
+    secret_key: str
     access_token_expire_minutes: int = 60
 
-    # Origins the SPA may be served from (CORS allow-list)
-    cors_origins: str = "http://localhost:5173,http://localhost:8080,http://10.0.2.20"
+    # CORS allow-list. Deployed, nginx serves SPA and API same-origin
+    # (ADR-0016), so only the Vite dev server needs an entry.
+    cors_origins: str = "http://localhost:5173"
 
     seed_password: str = "hms-demo-1234"
 

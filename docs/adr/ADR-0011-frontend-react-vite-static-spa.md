@@ -1,6 +1,8 @@
 # ADR-0011: Frontend — React + Vite static SPA served by nginx
 
-- **Status:** Accepted
+- **Status:** Accepted — serving amended by [ADR-0016](ADR-0016-lab-topology-server-plus-two-clients.md):
+  nginx runs on LabServer and proxies `/api` same-origin, so `VITE_API_BASE_URL`
+  is left empty and no CORS is involved
 - **Date:** 2026-09-25
 - **Deciders:** Project owner, Claude
 
