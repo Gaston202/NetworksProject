@@ -60,9 +60,12 @@ Get the repo onto the VM (`git clone` your private repo — paste a token when
 asked, or `scp -r` the folder from the host), then:
 
 ```bash
-MONGODB_URL='mongodb+srv://<user>:<password>@cluster0.bgop6.mongodb.net/?appName=Cluster0' \
-  sudo -E bash deploy/server-provision.sh
+sudo env MONGODB_URL='mongodb+srv://<user>:<password>@cluster0.bgop6.mongodb.net/?appName=Cluster0' \
+  bash deploy/server-provision.sh
 ```
+
+(`sudo env` instead of `sudo -E`: stock sudoers does not always forward
+environment variables; `env` always does.)
 
 The script installs Python only (no database packages — the database is Atlas,
 ADR-0004), writes `backend/.env` with a fresh `SECRET_KEY`, seeds demo data into

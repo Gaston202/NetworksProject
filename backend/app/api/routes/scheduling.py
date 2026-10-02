@@ -7,11 +7,12 @@ profile id, doctor consultation writes only for their own appointments
 cancelled appointment releases its slot (spec §4 row 2). Booking copies the
 slot's times onto the appointment, so displays need no joins.
 """
+import asyncio
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import BulkWriteError, DuplicateKeyError, PyMongoError
 
 from app.api.deps import get_current_user, require_role
 from app.core.config import settings
@@ -282,9 +283,17 @@ async def create_slots(doctor_id: int, payload: SlotBulkIn,
     ]
     try:
         await db["availability_slots"].insert_many(slots)
-    except DuplicateKeyError:
-        # Spec §4 row 6: the unique {doctor_id, starts_at} index is the new
-        # race guard for an exact-duplicate window — same 409 as the pre-check.
+    except BulkWriteError as exc:
+        # insert_many reports even a duplicate key as BulkWriteError, and it
+        # runs ordered: everything before the failed document is persisted.
+        # Keep the pre-check's promise ("nothing created") by deleting the
+        # batch back out — its ids were minted here and the pre-check just
+        # passed, so no other writer can hold them (spec §4 row 6).
+        await db["availability_slots"].delete_many(
+            {"_id": {"$in": list(slot_ids)}})
+        if not any(error.get("code") == 11000
+                   for error in exc.details.get("writeErrors", [])):
+            raise
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Slot range {windows[0][0]:%Y-%m-%d %H:%M} overlaps existing slots - "
@@ -473,12 +482,22 @@ async def complete_appointment(appointment_id: int,
         "status": InvoiceStatus.UNPAID.value,
         "created_at": utcnow(),
     }
-    try:
-        await db["invoices"].insert_one(invoice)
-    except DuplicateKeyError:
-        # Invoice already derived by a concurrent completion — keep one invoice.
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "Appointment already completed") from None
+    # The status move and the invoice are two awaits with no transaction, so
+    # brief Atlas hiccups between them used to strand a completed appointment
+    # without its derived invoice, with no repair path. Retry instead — the
+    # unique invoices.appointment_id index keeps each retry idempotent.
+    for attempt in range(3):
+        try:
+            await db["invoices"].insert_one(invoice)
+            break
+        except DuplicateKeyError:
+            # Invoice already derived by a concurrent completion — keep one.
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Appointment already completed") from None
+        except PyMongoError:
+            if attempt == 2:
+                raise
+            await asyncio.sleep(0.5)
     return await _out(
         db, await db["appointments"].find_one({"_id": appointment_id}),
         detail=True)
