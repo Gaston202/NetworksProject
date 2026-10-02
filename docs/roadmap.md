@@ -17,10 +17,9 @@ frontend work resumes.
       2026-10-02
 - [x] Auth: register/login, JWT issue, role-guard dependency (verified: 401/403/201)
 - [x] Seed script: demo admin/doctors/patients, departments, slots
-- [ ] Provision both VMs: NAT network, static IPs, Ubuntu Server (Python only —
-      Atlas is the DB),
-      Ubuntu Desktop (nginx) — scripts ready in `deploy/`, see `deploy/README.md`
-- [ ] `GET /api/health` returning 200 from `10.0.2.10:8000` **across the VMs**
+- [ ] Provision LabServer (NAT + `intnet` 192.168.100.10, Python + nginx — Atlas is
+      the DB) per ADR-0016 — scripts ready in `deploy/`, see `deploy/README.md`
+- [ ] `GET http://192.168.100.10/api/health` returning 200 **from a client VM**
       (passes locally: `curl http://localhost:8000/api/health`)
 
 **Exit criterion:** API live on the server VM, database migrated, demo accounts

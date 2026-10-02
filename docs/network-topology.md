@@ -1,8 +1,8 @@
 # HMS Network Topology
 
-Graded deliverable: how the system's machines are networked. Addresses per
-[ADR-0005](adr/ADR-0005-virtualbox-network-mode.md), services per
-[ADR-0002](adr/ADR-0002-deployment-topology-two-vms.md).
+Graded deliverable: how the system's machines are networked. Decided in
+[ADR-0016](adr/ADR-0016-lab-topology-server-plus-two-clients.md) — one server,
+two role-based clients.
 
 ## Diagram
 
@@ -10,56 +10,77 @@ Graded deliverable: how the system's machines are networked. Addresses per
 flowchart LR
     HOST["Windows host<br/>VirtualBox"]
 
-    subgraph NATNET["VirtualBox NAT Network — 10.0.2.0/24"]
+    subgraph INTNET["VirtualBox Internal Network 'intnet' — 192.168.100.0/24"]
         direction TB
-        SRV["hms-server — Ubuntu Server<br/>10.0.2.10"]
-        DESK["hms-desktop — Ubuntu Desktop<br/>10.0.2.20"]
+        C1["Client — Ubuntu Desktop<br/>DHCP (e.g. .102)<br/>browser: doctor"]
+        C2["Client2 — Ubuntu Desktop<br/>DHCP<br/>browser: patient"]
+        subgraph SRV["LabServer — Ubuntu Server · enp0s8 192.168.100.10"]
+            NGINX["nginx :80<br/>SPA + reverse proxy"]
+            API["uvicorn / FastAPI<br/>127.0.0.1:8000"]
+        end
     end
 
-    BROWSER["Browser<br/>(host or desktop VM)"]
-
-    HOST == "manages + provisions both VMs" --> NATNET
-    BROWSER -- "HTTP GET :80 → SPA" --> DESK
-    DESK == "nginx serves static build" --> DESK
-    BROWSER -- "HTTP REST + JWT :8000" --> SRV
-    SRV == "TLS TCP/27017 egress (mongodb+srv)" --> ATLAS[("MongoDB Atlas<br/>cluster0.bgop6.mongodb.net")]
+    C1 -- "HTTP :80" --> NGINX
+    C2 -- "HTTP :80" --> NGINX
+    NGINX -- "/api/* (loopback)" --> API
+    API == "enp0s3 NAT → TLS TCP/27017" ==> ATLAS[("MongoDB Atlas<br/>cluster0.bgop6.mongodb.net")]
+    HOST -. "ssh 127.0.0.1:2222 → :22 (NAT port-forward)" .-> SRV
 ```
 
 ## Components
 
-| Machine | OS | IP | Runs | Ports |
-|---------|----|----|------|-------|
-| `hms-server` | Ubuntu Server LTS | `10.0.2.10` | FastAPI (uvicorn via systemd) | `8000` (API); outbound `27017` → Atlas |
+| Machine | OS | Adapters / IP | Runs | Listening |
+|---------|----|---------------|------|-----------|
+| `LabServer` | Ubuntu Server 24.04 | `enp0s3` NAT (DHCP) · `enp0s8` intnet **192.168.100.10/24** static | nginx, FastAPI (systemd `hms-api`) | `:80` on intnet; `:22` on NAT; `127.0.0.1:8000` |
+| `Client` | Ubuntu Desktop | intnet, DHCP | Firefox | — |
+| `Client2` | Ubuntu Desktop | intnet, DHCP | Firefox | — |
 | MongoDB Atlas | managed cluster | public endpoints | MongoDB | `27017` (TLS, IP allow-listed) |
-| `hms-desktop` | Ubuntu Desktop LTS | `10.0.2.20` | nginx, static SPA build | `80` |
-| Windows host | Windows 11 | gateway | VirtualBox, dev environment | optional forwards: `8888→10.0.2.10:8000`, `8080→10.0.2.20:80` |
+| Windows host | Windows 11 | — | VirtualBox, dev environment, SPA build | forwards `127.0.0.1:2222 → LabServer:22` |
 
 ## Traffic flows
 
-1. **Browser → `hms-desktop:80`** — plain HTTP GET. nginx returns the React SPA's
+1. **Client → `LabServer:80` `/`**: plain HTTP GET. nginx returns the React SPA's
    static files; client-side routes fall back to `index.html`.
-2. **Browser → `hms-server:8000`** — plain HTTP REST calls carrying
-   `Authorization: Bearer <JWT>`. CORS on the backend whitelists `http://10.0.2.20`.
-3. **`hms-server` → MongoDB Atlas** — outbound TLS on TCP/27017 with SRV
-   discovery (`mongodb+srv`); Atlas is gated by the network access list (the
-   VM's public IP, or `0.0.0.0/0` as the demo fallback).
+2. **Client → `LabServer:80` `/api/...`**: plain HTTP REST with
+   `Authorization: Bearer <JWT>`. nginx **reverse-proxies** to uvicorn on
+   `127.0.0.1:8000`, adding `X-Forwarded-For` so the API logs the real client IP.
+   The page and the API share one origin, so the browser does no CORS checks.
+3. **`LabServer` → MongoDB Atlas**: outbound TLS on TCP/27017 via the NAT adapter,
+   with SRV discovery (`mongodb+srv`). Atlas only accepts allow-listed source IPs.
+4. **Host → `LabServer:22`**: ssh/scp for administration through the NAT
+   port-forward. This path isn't used by clients.
+
+## Firewall (ufw on LabServer)
+
+| Direction | Interface | Port | Action |
+|-----------|-----------|------|--------|
+| in | `enp0s8` (intnet) | 80/tcp | allow |
+| in | `enp0s3` (NAT) | 22/tcp | allow |
+| in | any | anything else (incl. 8000) | **deny** (default) |
+| out | any | any | allow |
 
 ## Talking points for the demo
 
-- The frontend and backend are **separate machines** — show `ip a` on each VM and
-  `ping 10.0.2.10` from the desktop.
-- Show the raw HTTP traffic once (browser devtools Network tab, or `curl -v`
-  against the API) — request/response over the NAT network is the graded behavior.
-- Swagger UI at `http://10.0.2.10:8000/docs` demonstrates the API surface directly.
-- `ping` the Atlas cluster — the API's `/api/health` now proves the cross-internet
-  DB leg live during the demo.
-- Same-origin vs cross-origin: nginx serving static files and the API on a different
-  origin is why CORS exists — mention it while showing a request succeed.
+- **Two role clients at once.** Patient books on `Client2`, doctor sees it on
+  `Client`, and both go through the same server. Show `ip a` on each machine.
+- **Reverse proxy.** One entry point (`:80`). `curl -m 3 http://192.168.100.10:8000`
+  from a client times out, because the API process listens on loopback only and
+  ufw drops the port.
+- **Network segmentation.** `intnet` carries client traffic only; NAT is
+  egress plus admin. Clients have no route to Atlas; only the server does.
+- **Raw HTTP.** devtools Network tab or `curl -v` shows request/response
+  headers, the JWT in `Authorization`, and status codes. `deploy/http_scenarios.py`
+  walks through 200/401/403/404/405/409/422.
+- **Live server log.** `journalctl -u hms-api -f` shows each client's IP per
+  request.
 
 ## Known limitations (report material)
 
-- Plain HTTP, no TLS — acceptable for the course (ADR-0002); JWTs travel unencrypted.
-- The API requires internet egress to Atlas on demo day (checklist in deploy
-  README).
-- Single NAT network; no redundancy, no load balancing.
-- Optional host port-forwards are for convenience, not part of the graded path.
+- Plain HTTP, no TLS. JWTs and passwords cross `intnet` unencrypted; this is
+  acceptable for the course and is the reason HTTPS exists.
+- The API needs internet egress to Atlas on demo day.
+- Single server, so there's no redundancy or load balancing.
+- Swagger UI (`/docs`) loads assets from a public CDN, so it only renders in a
+  browser that has internet access.
+- The Good tier (3 laptops on a hotspot) needs LabServer reachable outside
+  VirtualBox (e.g. a Bridged adapter). That's deferred; see ADR-0016.

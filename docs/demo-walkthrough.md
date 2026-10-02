@@ -17,10 +17,10 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
 
 ## Pre-flight (before starting)
 
-- [ ] Both VMs up; `ping 10.0.2.10` works from `hms-desktop`
-- [ ] `hms-api` systemd service active: `systemctl status hms-api`
-- [ ] Swagger loads: `http://10.0.2.10:8000/docs`
-- [ ] SPA loads: `http://10.0.2.20/`
+- [ ] LabServer + both clients up; `ping -c2 192.168.100.10` works from each client
+- [ ] On LabServer: `systemctl status hms-api nginx` both active
+- [ ] SPA loads on both clients: `http://192.168.100.10/`
+- [ ] `python3 http_scenarios.py` on a client → all rows PASS (Pass-tier HTTP scenarios)
 - [ ] Database seeded (6 demo users: admin, 3 doctors, 2 patients; departments with
       doctors; slots bookable; one historic completed visit)
 
@@ -35,7 +35,8 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
    patient (Leila) — front desk books on behalf of a patient without an online
    account flow.
 4. *(Network beat: open devtools Network tab — show the `POST /api/appointments`
-   request to `10.0.2.10:8000` with the JWT in the Authorization header.)*
+   request to `192.168.100.10/api/...` with the JWT in the Authorization header —
+   same origin, served through nginx.)*
 
 **Act 2 — Consultation (Doctor persona)**
 
@@ -57,17 +58,21 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
 
 ## Optional 30-second deep-dive, if the grader asks "where's the networking?"
 
-- `curl -v http://10.0.2.10:8000/api/appointments` from the desktop VM — raw HTTP
-  over the NAT network, `401` without a token; retry with a Bearer token to show the
-  role-scoped list.
+- `curl -v http://192.168.100.10/api/appointments` from a client — raw HTTP over
+  `intnet`, `401` without a token; retry with a Bearer token to show the role-scoped list.
+- `curl -m 3 http://192.168.100.10:8000/api/health` from a client **times out**: the
+  API is only reachable through nginx (uvicorn on loopback + ufw).
+- `sudo journalctl -u hms-api -f` on LabServer while both clients click around — each
+  request is logged with the real client IP (nginx forwards it).
 - Swagger UI request/response as the API contract.
-- `systemctl status hms-api` + `nginx` service on the desktop.
+- `systemctl status hms-api nginx` and `sudo ufw status verbose` on LabServer.
 
 ## Recovery playbook (things going wrong mid-demo)
 
 | Symptom | Fix |
 |---------|-----|
-| API unreachable from desktop | `systemctl status hms-api`, then check `ip a` on both VMs |
-| CORS error in console | API base URL wrong in the build — check the deployed `VITE_API_BASE_URL` |
+| Page/API unreachable from a client | `systemctl status hms-api nginx` on LabServer, then `ip a` on both; both on `intnet`? |
+| CORS error in console | The build has a non-empty `VITE_API_BASE_URL` — rebuild with it empty (same-origin `/api`) |
 | Login fails | Re-run seed script; confirm password in seed config |
+| `502 Bad Gateway` | nginx is up but uvicorn isn't: `journalctl -u hms-api -n 50` |
 | Slot won't book | Already taken — pick another; explains the uniqueness rule |
