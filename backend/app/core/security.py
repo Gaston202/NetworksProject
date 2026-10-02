@@ -8,12 +8,19 @@ from app.core.config import settings
 
 ALGORITHM = "HS256"
 
+# bcrypt only reads the first 72 bytes; bcrypt>=5 raises ValueError beyond that.
+BCRYPT_MAX_BYTES = 72
+
 
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    # No stored hash can match an over-limit password (registration rejects them),
+    # so answer "wrong password" instead of letting bcrypt raise a 500.
+    if len(plain.encode("utf-8")) > BCRYPT_MAX_BYTES:
+        return False
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 

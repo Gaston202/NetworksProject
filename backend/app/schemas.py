@@ -1,7 +1,21 @@
 """Pydantic request/response schemas. Per-module schemas will grow here."""
 from datetime import date as date_t, datetime
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, EmailStr, Field
+
+from app.core.security import BCRYPT_MAX_BYTES
+
+
+def _within_bcrypt_limit(password: str) -> str:
+    """Characters aren't bytes: 'é' counts 2, so measure the UTF-8 encoding."""
+    if len(password.encode("utf-8")) > BCRYPT_MAX_BYTES:
+        raise ValueError(f"Password must be at most {BCRYPT_MAX_BYTES} bytes")
+    return password
+
+
+NewPassword = Annotated[str, Field(min_length=8, max_length=128),
+                        AfterValidator(_within_bcrypt_limit)]
 
 
 # --- Auth (ADR-0006) ---
@@ -10,7 +24,7 @@ class RegisterIn(BaseModel):
     """Public registration — always creates a Patient (ADR-0007)."""
     full_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: NewPassword
     date_of_birth: date_t | None = None
     phone: str | None = None
     address: str | None = None
@@ -42,7 +56,7 @@ class StaffCreateIn(BaseModel):
     """Admin-only staff account creation."""
     full_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: NewPassword
     role: str  # admin | doctor
     department_id: int | None = None
     specialty: str | None = None
