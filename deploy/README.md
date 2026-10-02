@@ -63,6 +63,7 @@ scp -P 2222 -r dist ghass@127.0.0.1:/project/NetworksProject/frontend/
 `0.0.0.0/0` and document it as a known limitation.
 
 ```bash
+# Re-runs (backend/.env already exists) read the URL from .env: sudo bash deploy/server-provision.sh
 sudo env MONGODB_URL='mongodb+srv://<user>:<password>@cluster0.bgop6.mongodb.net/?appName=Cluster0' \
   bash deploy/server-provision.sh
 ```

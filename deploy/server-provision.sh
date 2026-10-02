@@ -3,6 +3,7 @@
 # The database is MongoDB Atlas (ADR-0004) — nothing database-related is
 # installed here; the VM just needs outbound access to Atlas (TCP 27017).
 # Run ON the VM:  sudo env MONGODB_URL='mongodb+srv://...' bash deploy/server-provision.sh
+# Re-runs (backend/.env already present) need no MONGODB_URL:  sudo bash deploy/server-provision.sh
 # Assumes Ubuntu Server 24.04 LTS and that this repo is present (git clone or scp).
 
 set -euo pipefail
@@ -20,7 +21,12 @@ RUN_USER="${SUDO_USER:-$(stat -c '%U' "$REPO_DIR")}"
 NAT_IFACE="${NAT_IFACE:-enp0s3}"
 LAN_IFACE="${LAN_IFACE:-enp0s8}"
 
-MONGODB_URL="${MONGODB_URL:?Set MONGODB_URL first, e.g. sudo env MONGODB_URL='mongodb+srv://...' bash $0}"
+# Only a first install needs the connection string; afterwards it lives in .env,
+# so re-runs never put the Atlas password on a command line.
+if [ ! -f "$BACKEND_DIR/.env" ] && [ -z "${MONGODB_URL:-}" ]; then
+  echo "ERROR: no backend/.env yet - run: sudo env MONGODB_URL='mongodb+srv://...' bash $0" >&2
+  exit 1
+fi
 
 echo "==> Installing system packages (no database packages on this VM)"
 apt-get update -qq
