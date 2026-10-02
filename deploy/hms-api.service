@@ -1,7 +1,7 @@
 [Unit]
 Description=HMS FastAPI backend (uvicorn)
-After=network.target postgresql.service
-Wants=postgresql.service
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
