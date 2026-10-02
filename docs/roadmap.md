@@ -10,14 +10,15 @@ frontend work resumes.
 
 ## Week 1 — Foundations (backend core + VMs)
 
-- [x] Scaffold monorepo: `backend/` (FastAPI + uvicorn + pydantic + SQLAlchemy),
+- [x] Scaffold monorepo: `backend/` (fastapi + uvicorn + pydantic + Motor),
       `frontend/` (Vite + React + TS + Tailwind), `deploy/`
-- [x] Database schema + Alembic migration (all entities from
-      [domain-model](domain-model.md)) — squashed in place 2026-10-01 for the
-      three-role scope
+- [x] MongoDB Atlas collections + unique-index bootstrap (all entities from
+      [domain-model](domain-model.md)) — PostgreSQL reversed via ADR-0004
+      2026-10-02
 - [x] Auth: register/login, JWT issue, role-guard dependency (verified: 401/403/201)
 - [x] Seed script: demo admin/doctors/patients, departments, slots
-- [ ] Provision both VMs: NAT network, static IPs, Ubuntu Server (Python + PG),
+- [ ] Provision both VMs: NAT network, static IPs, Ubuntu Server (Python only —
+      Atlas is the DB),
       Ubuntu Desktop (nginx) — scripts ready in `deploy/`, see `deploy/README.md`
 - [ ] `GET /api/health` returning 200 from `10.0.2.10:8000` **across the VMs**
       (passes locally: `curl http://localhost:8000/api/health`)
@@ -27,8 +28,8 @@ seeded.
 
 ## Week 2 — Server: appointments + clinical APIs
 
-- [ ] Appointments API: slot creation (bulk windows), booking (unique-constraint +
-      transaction), cancel, status transitions (`booked → consulted → completed`)
+- [ ] Appointments API: slot creation (bulk windows), booking (unique slot
+      index), cancel, status transitions (`booked → consulted → completed`)
 - [ ] Clinical API: consultation write (doctor) + reads (doctor/patient/admin) with
       per-row ownership checks
 - [ ] Admin API: departments CRUD, user management, patients list for walk-ins

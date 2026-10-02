@@ -15,7 +15,7 @@ Two VMs:
 
 | VM | OS | Role | Serves |
 |----|----|------|--------|
-| `hms-server` | Ubuntu Server (LTS) | Backend + database | FastAPI REST API over HTTP + PostgreSQL |
+| `hms-server` | Ubuntu Server (LTS) | Backend | FastAPI REST API over HTTP; MongoDB Atlas supplies the database (ADR-0004) |
 | `hms-desktop` | Ubuntu Desktop (LTS) | Frontend | Static frontend build served over HTTP (nginx); browser clients open it |
 
 The frontend is a web application (not a desktop-native app). It calls the backend

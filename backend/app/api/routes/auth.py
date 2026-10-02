@@ -1,48 +1,64 @@
 """Registration, login, and current-user endpoints (ADR-0006)."""
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi.concurrency import run_in_threadpool
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 
 from app.api.deps import get_current_user, require_role
 from app.core.security import create_access_token, hash_password, verify_password
-from app.db.base import get_db
-from app.models import DoctorProfile, PatientProfile, User, UserRole
+from app.db.mongo import date_to_dt, get_db, next_id, strip_id, utcnow
+from app.domain import UserRole
 from app.schemas import LoginIn, RegisterIn, StaffCreateIn, TokenOut, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterIn, db: Session = Depends(get_db)) -> TokenOut:
+async def register(payload: RegisterIn,
+                   db: AsyncIOMotorDatabase = Depends(get_db)) -> TokenOut:
     """Public self-registration. Always creates a Patient account (ADR-0007)."""
-    if db.query(User).filter(User.email == payload.email).first():
+    if await db["users"].find_one({"email": payload.email}):
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-    user = User(
-        full_name=payload.full_name,
-        email=payload.email,
-        password_hash=hash_password(payload.password),
-        role=UserRole.PATIENT.value,
-    )
-    user.patient_profile = PatientProfile(
-        date_of_birth=payload.date_of_birth,
-        phone=payload.phone,
-        address=payload.address,
-    )
-    db.add(user)
-    db.commit()
+    password_hash = await run_in_threadpool(hash_password, payload.password)
+    user = {
+        "_id": await next_id("users"),
+        "full_name": payload.full_name,
+        "email": payload.email,
+        "password_hash": password_hash,
+        "role": UserRole.PATIENT.value,
+        "is_active": True,
+        "created_at": utcnow(),
+    }
+    try:
+        await db["users"].insert_one(user)
+    except DuplicateKeyError:
+        # Lost the email race - the pre-check above yields the same 409 first.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Email already registered") from None
+    await db["patient_profiles"].insert_one({
+        "_id": await next_id("patient_profiles"),
+        "user_id": user["_id"],
+        "date_of_birth": date_to_dt(payload.date_of_birth),
+        "phone": payload.phone,
+        "address": payload.address,
+    })
     return _token_for(user)
 
 
 @router.post("/login", response_model=TokenOut)
-def login(payload: LoginIn, db: Session = Depends(get_db)) -> TokenOut:
-    user = db.query(User).filter(User.email == payload.email).first()
-    if user is None or not verify_password(payload.password, user.password_hash):
+async def login(payload: LoginIn,
+                db: AsyncIOMotorDatabase = Depends(get_db)) -> TokenOut:
+    user = await db["users"].find_one({"email": payload.email})
+    valid = user is not None and await run_in_threadpool(
+        verify_password, payload.password, user["password_hash"])
+    if not valid:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     return _token_for(user)
 
 
 @router.get("/me", response_model=UserOut)
-def me(user: User = Depends(get_current_user)) -> User:
-    return user
+async def me(user: dict = Depends(get_current_user)) -> dict:
+    return strip_id(user)
 
 
 @router.post(
@@ -51,7 +67,8 @@ def me(user: User = Depends(get_current_user)) -> User:
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_role(UserRole.ADMIN))],
 )
-def create_staff(payload: StaffCreateIn, db: Session = Depends(get_db)) -> User:
+async def create_staff(payload: StaffCreateIn,
+                       db: AsyncIOMotorDatabase = Depends(get_db)) -> dict:
     """Admin creates staff accounts. Role must not be 'patient' (use /register)."""
     if payload.role == UserRole.PATIENT.value:
         raise HTTPException(
@@ -63,26 +80,36 @@ def create_staff(payload: StaffCreateIn, db: Session = Depends(get_db)) -> User:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown role"
         ) from None
-    if db.query(User).filter(User.email == payload.email).first():
+    if await db["users"].find_one({"email": payload.email}):
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-    user = User(
-        full_name=payload.full_name,
-        email=payload.email,
-        password_hash=hash_password(payload.password),
-        role=role.value,
-    )
+    password_hash = await run_in_threadpool(hash_password, payload.password)
+    user = {
+        "_id": await next_id("users"),
+        "full_name": payload.full_name,
+        "email": payload.email,
+        "password_hash": password_hash,
+        "role": role.value,
+        "is_active": True,
+        "created_at": utcnow(),
+    }
+    try:
+        await db["users"].insert_one(user)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Email already registered") from None
     if role == UserRole.DOCTOR:
-        user.doctor_profile = DoctorProfile(
-            department_id=payload.department_id, specialty=payload.specialty
-        )
-    db.add(user)
-    db.commit()
-    return user
+        await db["doctor_profiles"].insert_one({
+            "_id": await next_id("doctor_profiles"),
+            "user_id": user["_id"],
+            "department_id": payload.department_id,
+            "specialty": payload.specialty,
+        })
+    return strip_id(user)
 
 
-def _token_for(user: User) -> TokenOut:
+def _token_for(user: dict) -> TokenOut:
     return TokenOut(
-        access_token=create_access_token(user.id, user.role),
-        role=user.role,
-        full_name=user.full_name,
+        access_token=create_access_token(user["_id"], user["role"]),
+        role=user["role"],
+        full_name=user["full_name"],
     )

@@ -5,9 +5,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # Local-dev default matches backend/docker-compose.yml (PostgreSQL on :5433);
-    # deployment passes its own URL via DATABASE_URL / .env on the VM.
-    database_url: str = "postgresql+psycopg2://hms:hms_dev_password@localhost:5433/hms"
+    # The database is MongoDB Atlas (ADR-0004) - no default: a missing
+    # MONGODB_URL fails loudly at startup rather than reaching for a local DB.
+    mongodb_url: str
+    mongodb_db: str = "hms"
+
     secret_key: str = "dev-only-insecure-secret-change-me"
     access_token_expire_minutes: int = 60
 

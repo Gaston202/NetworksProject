@@ -51,17 +51,28 @@ Optional host access (demo convenience):
 
 ## 2. Provision the backend (on hms-server)
 
-Get the repo onto the VM (`git clone` your private repo — paste a token when asked,
-or `scp -r` the folder from the host), then:
+**Before provisioning, allow-list the VM's public IP in Atlas** (Atlas UI →
+Network Access → Add IP Address), or for a demo-only shortcut `0.0.0.0/0`
+(allow all — convenient, but documented as the known, scoped limitation
+analogous to ADR-0002's plain-HTTP note; restrict it after the demo).
+
+Get the repo onto the VM (`git clone` your private repo — paste a token when
+asked, or `scp -r` the folder from the host), then:
 
 ```bash
-HMS_DB_PASSWORD='pick-a-real-one' sudo bash deploy/server-provision.sh
+MONGODB_URL='mongodb+srv://<user>:<password>@cluster0.bgop6.mongodb.net/?appName=Cluster0' \
+  sudo -E bash deploy/server-provision.sh
 ```
 
-The script installs PostgreSQL, creates the DB, writes `backend/.env` with a fresh
-`SECRET_KEY`, generates the initial Alembic migration, migrates, seeds demo data,
-installs the `hms-api.service` systemd unit, and verifies with
-`curl http://localhost:8000/api/health`.
+The script installs Python only (no database packages — the database is Atlas,
+ADR-0004), writes `backend/.env` with a fresh `SECRET_KEY`, seeds demo data into
+Atlas, installs the `hms-api.service` systemd unit, and verifies with
+`curl http://localhost:8000/api/health` (which pings Atlas).
+
+The API requires **outbound internet to Atlas on TCP/27017** (TLS + SRV
+discovery via the `mongodb+srv` string). Demo-day dependency: the VM must have
+internet egress; if the health check fails, check Atlas's Network Access list
+first, then the VM's egress.
 
 Confirm from the **desktop VM**: `curl http://10.0.2.10:8000/api/health` → `200`.
 Also open `http://10.0.2.10:8000/docs` (Swagger) — Week 1 exit criterion.
@@ -89,5 +100,5 @@ Then from any machine on the NAT network: `http://10.0.2.20/` shows the SPA.
 |------|---------|
 | Backend logs | `journalctl -u hms-api -f` |
 | Restart API | `sudo systemctl restart hms-api` |
-| Re-seed demo data | drop DB, re-run provision script, or `python -m app.seed` |
+| Re-seed demo data | `backend/scripts/reset_demo.py` (drops the collections — least-privilege Atlas users may not `dropDatabase`), then `python -m app.seed` |
 | Redeploy frontend | rebuild on host, `scp -r dist/*`, script re-runs fine |

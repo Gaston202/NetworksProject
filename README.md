@@ -1,8 +1,8 @@
 # Hospital Management System (HMS)
 
-A two-VM hospital management system for a networks course: a FastAPI + PostgreSQL
-backend on Ubuntu Server, a React SPA served by nginx on Ubuntu Desktop, talking
-over a VirtualBox NAT network.
+A two-VM hospital management system for a networks course: a FastAPI backend on
+Ubuntu Server backed by MongoDB Atlas, a React SPA served by nginx on Ubuntu
+Desktop, talking over a VirtualBox NAT network.
 
 **Status:** building. Auth core, schema, and seed are done; the three-role server
 API (appointments, clinical, billing, admin) is in progress — see the
@@ -24,12 +24,12 @@ API (appointments, clinical, billing, admin) is in progress — see the
 Patients book doctor slots from a department browser (walking patients are booked
 into the same system by the front desk); doctors consult and prescribe; invoices
 are derived automatically from the visit. Three roles — admin, doctor, patient —
-JWT auth, PostgreSQL, all demonstrated across two Ubuntu VMs over plain HTTP.
+JWT auth, MongoDB Atlas, all demonstrated across two Ubuntu VMs over plain HTTP.
 
 ## Layout (planned)
 
 ```
-backend/    FastAPI + uvicorn + SQLAlchemy + Alembic
+backend/    FastAPI + uvicorn + Motor (MongoDB Atlas)
 frontend/   React + Vite + TypeScript + Tailwind (static build for nginx)
 deploy/     provisioning + deploy scripts per VM
 docs/       the documents above
