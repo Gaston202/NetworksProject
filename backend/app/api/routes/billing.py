@@ -6,7 +6,8 @@ invoice (see the appointments module); this module only reads and marks paid.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user_sqla as get_current_user, \
+    require_role_sqla as require_role
 from app.db.base import get_db
 from app.models import Appointment, Invoice, InvoiceStatus, PatientProfile, User, UserRole
 from app.schemas import InvoiceOut

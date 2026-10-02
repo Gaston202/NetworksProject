@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user_sqla as get_current_user, \
+    require_role_sqla as require_role
 from app.core.config import settings
 from app.db.base import get_db
 from app.models import (
