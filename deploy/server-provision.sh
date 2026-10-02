@@ -2,7 +2,7 @@
 # Provision the FastAPI backend on the Ubuntu Server VM (hms-server).
 # The database is MongoDB Atlas (ADR-0004) — nothing database-related is
 # installed here; the VM just needs outbound access to Atlas (TCP 27017).
-# Run ON the VM:  sudo MONGODB_URL='mongodb+srv://...' bash deploy/server-provision.sh
+# Run ON the VM:  sudo env MONGODB_URL='mongodb+srv://...' bash deploy/server-provision.sh
 # Assumes Ubuntu Server 24.04 LTS and that this repo is present (git clone or scp).
 
 set -euo pipefail
@@ -10,7 +10,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$REPO_DIR/backend"
 
-MONGODB_URL="${MONGODB_URL:?Set MONGODB_URL first, e.g. MONGODB_URL='mongodb+srv://...' sudo bash $0}"
+MONGODB_URL="${MONGODB_URL:?Set MONGODB_URL first, e.g. sudo env MONGODB_URL='mongodb+srv://...' bash $0}"
 
 echo "==> Installing system packages (no database packages on this VM)"
 apt-get update -qq
@@ -51,6 +51,16 @@ echo "==> Allowing the API port through the firewall (NAT network only)"
 if command -v ufw >/dev/null; then ufw allow 8000/tcp || true; fi
 
 echo "==> Verifying"
-sleep 2
 systemctl --no-pager status hms-api | head -5 || true
-curl -fsS http://localhost:8000/api/health && echo && echo "BACKEND PROVISIONED OK"
+# The first boot also runs ensure_indexes against Atlas — wait for it instead
+# of failing a provisioning run that is seconds away from being healthy.
+for attempt in $(seq 1 12); do
+  if curl -fsS --max-time 4 http://localhost:8000/api/health; then break; fi
+  if [ "$attempt" = 12 ]; then
+    echo "API health never reported OK - check: journalctl -u hms-api" >&2
+    exit 1
+  fi
+  sleep 3
+done
+echo
+echo "BACKEND PROVISIONED OK"
