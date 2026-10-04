@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
+import { BrandLogo, BrandMark } from '@/components/BrandMark'
 import { RoleBadge } from '@/components/RoleBadge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -57,8 +58,8 @@ export function AppShell({ role }: { role: Role }) {
   return (
     <div className="flex min-h-svh">
       <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
-        <div className="flex h-14 items-center px-4 text-sm font-semibold tracking-tight">
-          Hospital Management System
+        <div className="flex h-16 items-center px-4">
+          <BrandMark />
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-2 py-2">
           {items.map((item) => (
@@ -68,8 +69,8 @@ export function AppShell({ role }: { role: Role }) {
               end={item.end}
               className={({ isActive }) =>
                 isActive
-                  ? 'rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary'
-                  : 'rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
+                  ? 'rounded-md bg-sidebar-accent px-3 py-2 text-sm font-medium text-sidebar-accent-foreground'
+                  : 'rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground'
               }
             >
               <span className="flex items-center gap-2">
@@ -93,7 +94,8 @@ export function AppShell({ role }: { role: Role }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4 md:px-6">
-          <span className="font-semibold md:hidden">HMS</span>
+          <BrandLogo className="size-7 text-primary md:hidden" />
+          <span className="sr-only md:hidden">Carthage Medical Center</span>
           <nav className="flex items-center gap-1 overflow-x-auto md:hidden">
             {items.map((item) => (
               <NavLink

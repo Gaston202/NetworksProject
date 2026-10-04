@@ -82,7 +82,9 @@ export default function SchedulePage() {
               This week
             </h2>
             {slots !== null ? (
-              <span className="text-xs text-muted-foreground">{freeCount} free</span>
+              <span className="text-xs text-muted-foreground">
+                {freeCount} free · booked slots are struck through
+              </span>
             ) : null}
           </div>
           {error !== null ? (
@@ -103,8 +105,12 @@ export default function SchedulePage() {
                     {daySlots.map((slot) => (
                       <li key={slot.id}>
                         <Badge
-                          variant={slot.is_free ? 'outline' : 'secondary'}
-                          className={slot.is_free ? '' : 'line-through opacity-70'}
+                          variant="outline"
+                          className={
+                            slot.is_free
+                              ? 'tabular border-primary/25 bg-primary/5 text-primary'
+                              : 'tabular bg-muted text-muted-foreground line-through'
+                          }
                           title={slot.is_free ? 'Free' : 'Booked'}
                         >
                           {formatTime(slot.starts_at)}

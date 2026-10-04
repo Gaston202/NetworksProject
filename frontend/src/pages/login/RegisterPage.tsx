@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
+import { AuthLayout } from '@/components/AuthLayout'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -55,10 +56,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center px-4">
-      <Card className="w-full max-w-md">
+    <AuthLayout>
+      <Card className="w-full max-w-md shadow-sm">
         <CardHeader>
-          <CardTitle>Create a patient account</CardTitle>
+          <CardTitle className="text-xl">Create a patient account</CardTitle>
           <CardDescription>
             Staff accounts (admin, doctor) are created by an administrator.
           </CardDescription>
@@ -144,6 +145,6 @@ export default function RegisterPage() {
           </p>
         </CardFooter>
       </Card>
-    </main>
+    </AuthLayout>
   )
 }
