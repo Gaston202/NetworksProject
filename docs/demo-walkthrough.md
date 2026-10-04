@@ -54,7 +54,9 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
 
 **Act 4 — Management (Admin persona, quick pass)**
 
-9. Create a department, a doctor user, and show slot creation — the loop closes.
+9. Create a department, a doctor user, and open their availability from the doctor's
+   row in **Users** ("Open availability") — the new slots appear in the patient's
+   booking picker; the loop closes. *(Doctors can do the same from **My schedule**.)*
 
 ## Optional 30-second deep-dive, if the grader asks "where's the networking?"
 

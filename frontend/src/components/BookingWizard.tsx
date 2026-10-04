@@ -24,28 +24,7 @@ import type {
   DoctorOut,
   SlotOut,
 } from '@/lib/types'
-
-/** "YYYY-MM-DD" group key. The API has no date filter on slots
- * (only `?free=true`), so the wizard groups all free slots by day. */
-function dayKey(iso: string): string {
-  return iso.slice(0, 10)
-}
-
-function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-}
+import { dayKey, formatDay, formatTime } from '@/lib/format'
 
 interface BookingWizardProps {
   /** Walk-in mode: the admin books on behalf of this patient profile id. */

@@ -7,6 +7,7 @@ import BookPage from '@/pages/patient/BookPage'
 import MyAppointmentsPage from '@/pages/patient/MyAppointmentsPage'
 import MyRecordsPage from '@/pages/patient/MyRecordsPage'
 import DoctorAppointmentsPage from '@/pages/doctor/DoctorAppointmentsPage'
+import SchedulePage from '@/pages/doctor/SchedulePage'
 import UsersPage from '@/pages/admin/UsersPage'
 import DepartmentsPage from '@/pages/admin/DepartmentsPage'
 import PatientsPage from '@/pages/admin/PatientsPage'
@@ -29,6 +30,7 @@ export default function App() {
       <Route path="/doctor" element={<RequireRole role="doctor" />}>
         <Route element={<AppShell role="doctor" />}>
           <Route index element={<DoctorAppointmentsPage />} />
+          <Route path="schedule" element={<SchedulePage />} />
         </Route>
       </Route>
 

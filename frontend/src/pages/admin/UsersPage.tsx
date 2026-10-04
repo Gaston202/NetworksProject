@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { EmptyState, PageError, PageLoading } from '@/components/PageState'
 import { RoleBadge } from '@/components/RoleBadge'
+import { SlotWindowForm } from '@/components/SlotWindowForm'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,7 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { errorMessage, request } from '@/lib/api'
-import type { DepartmentOut, Role, UserOut, UserUpdateIn } from '@/lib/types'
+import type { DepartmentOut, DoctorOut, Role, UserOut, UserUpdateIn } from '@/lib/types'
 
 const ROLES: Role[] = ['admin', 'doctor', 'patient']
 
@@ -41,6 +42,8 @@ export default function UsersPage() {
   const [departments, setDepartments] = useState<DepartmentOut[]>([])
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<UserOut | null>(null)
+  const [doctors, setDoctors] = useState<DoctorOut[]>([])
+  const [scheduling, setScheduling] = useState<DoctorOut | null>(null)
 
   const load = useCallback(
     async (filter: string) => {
@@ -63,6 +66,19 @@ export default function UsersPage() {
     void load(roleFilter)
   }, [load, roleFilter])
 
+  const loadDoctors = useCallback(() => {
+    // Slot creation targets the doctor_profile id; the directory maps it by email.
+    request<DoctorOut[]>('/doctors')
+      .then(setDoctors)
+      .catch(() => {
+        // Without the directory the availability action stays hidden.
+      })
+  }, [])
+
+  useEffect(() => {
+    loadDoctors()
+  }, [loadDoctors])
+
   useEffect(() => {
     // Departments are needed for the doctor pickers in both dialogs.
     request<DepartmentOut[]>('/departments')
@@ -71,6 +87,10 @@ export default function UsersPage() {
         // The dialogs show a loadable-empty department list; the main list is unaffected.
       })
   }, [])
+
+  function doctorFor(user: UserOut): DoctorOut | undefined {
+    return doctors.find((doctor) => doctor.email === user.email)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -127,11 +147,22 @@ export default function UsersPage() {
                     <RoleBadge role={user.role} />
                   </TableCell>
                   <TableCell className="text-right">
-                    {user.role !== 'patient' && (
-                      <Button size="sm" variant="outline" onClick={() => setEditing(user)}>
-                        Edit
-                      </Button>
-                    )}
+                    <div className="flex justify-end gap-2">
+                      {user.role === 'doctor' && doctorFor(user) !== undefined && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setScheduling(doctorFor(user) ?? null)}
+                        >
+                          Open availability
+                        </Button>
+                      )}
+                      {user.role !== 'patient' && (
+                        <Button size="sm" variant="outline" onClick={() => setEditing(user)}>
+                          Edit
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -144,8 +175,35 @@ export default function UsersPage() {
         open={createOpen}
         departments={departments}
         onClose={() => setCreateOpen(false)}
-        onCreated={() => void load(roleFilter)}
+        onCreated={() => {
+          void load(roleFilter)
+          loadDoctors()
+        }}
       />
+
+      <Dialog
+        open={scheduling !== null}
+        onOpenChange={(next) => {
+          if (!next) setScheduling(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Open availability — {scheduling?.full_name}</DialogTitle>
+            <DialogDescription>
+              {scheduling?.department_name ?? 'No department'} · new slots appear in the
+              patient booking picker immediately.
+            </DialogDescription>
+          </DialogHeader>
+          {scheduling !== null && (
+            <SlotWindowForm
+              doctorId={scheduling.id}
+              onCancel={() => setScheduling(null)}
+              onCreated={() => setScheduling(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {editing !== null && (
         <EditUserDialog

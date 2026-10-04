@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import {
   Building2,
+  CalendarClock,
   CalendarPlus,
   CalendarRange,
   FileText,
@@ -30,7 +31,10 @@ const NAV: Record<Role, NavItem[]> = {
     { to: '/patient/appointments', label: 'My appointments', icon: CalendarRange },
     { to: '/patient/records', label: 'My records', icon: FileText },
   ],
-  doctor: [{ to: '/doctor', label: 'My queue', icon: CalendarRange, end: true }],
+  doctor: [
+    { to: '/doctor', label: 'My queue', icon: CalendarRange, end: true },
+    { to: '/doctor/schedule', label: 'My schedule', icon: CalendarClock },
+  ],
   admin: [
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/departments', label: 'Departments', icon: Building2 },
