@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useAuth } from '@/auth/AuthContext'
@@ -33,7 +33,13 @@ export default function ProfilePage() {
         <PageLoading rows={4} />
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-2">
-          <DetailsCard profile={profile.data} onSaved={() => void profile.reload()} />
+          {/* Keyed on the saved values: a reload after saving remounts the form
+              with the authoritative profile instead of syncing state in an effect. */}
+          <DetailsCard
+            key={`${profile.data.full_name}|${profile.data.phone}|${profile.data.address}`}
+            profile={profile.data}
+            onSaved={() => void profile.reload()}
+          />
           <PasswordCard />
         </div>
       )}
@@ -58,13 +64,6 @@ function DetailsCard({ profile, onSaved }: { profile: ProfileOut; onSaved: () =>
   const [address, setAddress] = useState(profile.address ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Re-sync the form after a save (the reloaded profile is authoritative).
-  useEffect(() => {
-    setFullName(profile.full_name)
-    setPhone(profile.phone ?? '')
-    setAddress(profile.address ?? '')
-  }, [profile])
 
   const dirty =
     fullName.trim() !== profile.full_name ||

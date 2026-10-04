@@ -50,10 +50,14 @@ topology.
 
 ## Week 4 — Frontend + demo polish + graded deliverables
 
-- [ ] Frontend shell: login, role-based nav (admin/doctor/patient), API client with JWT
-- [ ] Patient booking UI (department → doctor → slot); patient appointments + records list
-- [ ] Doctor consultation screen; Admin billing + management screens ([demo Acts
+- [x] Frontend shell: login, role-based nav (admin/doctor/patient), API client with JWT
+- [x] Patient booking UI (department → doctor → slot); patient appointments + records list
+- [x] Doctor consultation screen; Admin billing + management screens ([demo Acts
       1–4](demo-walkthrough.md))
+- [x] Realism pass (2026-10-04): Carthage Medical Center brand, role dashboards,
+      slot availability UI (doctor + admin), names in API responses, search and
+      filters, patient medical timeline, self-service profile + password change,
+      richer deterministic seed, per-route code splitting
 - [ ] Rehearse the [demo walkthrough](demo-walkthrough.md) on the VMs; fix the rough edges
 - [ ] Finalize [network-topology](network-topology.md) with the real IPs/ports
 - [ ] Report material: architecture section, security considerations (HTTP caveat),

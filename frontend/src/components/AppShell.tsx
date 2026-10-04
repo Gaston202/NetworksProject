@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import {
   Building2,
@@ -15,6 +16,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
 import { BrandLogo, BrandMark } from '@/components/BrandMark'
+import { PageLoading } from '@/components/PageState'
 import { RoleBadge } from '@/components/RoleBadge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -142,7 +144,9 @@ export function AppShell({ role }: { role: Role }) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 md:px-6">
-          <Outlet />
+          <Suspense fallback={<PageLoading rows={4} />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

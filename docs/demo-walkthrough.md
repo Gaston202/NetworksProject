@@ -41,15 +41,16 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
 
 **Act 2 — Consultation (Doctor persona)**
 
-5. Login as **Doctor** → open the appointment → write diagnosis + notes +
-   prescription (free text).
+5. Login as **Doctor** → the **Home** dashboard shows today's list and the next
+   patient → **My queue** (open visits, soonest first) → open the appointment →
+   write diagnosis + notes + prescription (free text).
 6. Mark appointment **completed** → invoice is auto-created with the consultation
    fee. *(Show the new invoice in the response.)*
 
 **Act 3 — Billing (Admin persona)**
 
-7. Login as **Admin** → billing view → the visit's invoice shows the consultation
-   fee → mark **paid**.
+7. Login as **Admin** → billing view → type the patient's name in the search box →
+   the visit's invoice (doctor, department, visit time, TND fee) → mark **paid**.
 8. Back as **Patient** — they can see their appointment, consultation, and invoice,
    and *only* their own.
 

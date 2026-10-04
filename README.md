@@ -1,13 +1,15 @@
-# Hospital Management System (HMS)
+# Carthage Medical Center — Hospital Management System (HMS)
 
 A client–server hospital management system for a networks course: one Ubuntu
 Server VM (`LabServer`) runs nginx (React SPA + reverse proxy) in front of a
 FastAPI backend backed by MongoDB Atlas; two Ubuntu Desktop clients, one per user
 role, use it over a VirtualBox internal network (ADR-0016).
 
-**Status:** building. Auth core, schema, and seed are done; the three-role server
-API (appointments, clinical, billing, admin) is in progress — see the
-[roadmap](docs/roadmap.md).
+**Status:** demo-ready. The three-role API and the SPA are complete and branded
+as the fictional *Carthage Medical Center*: role dashboards, booking, the doctor
+queue and schedule, a patient medical timeline, billing, self-service profiles,
+and a seeded two-week visit history. Remaining work is VM rehearsal and report
+material — see the [roadmap](docs/roadmap.md).
 
 ## Documentation
 
