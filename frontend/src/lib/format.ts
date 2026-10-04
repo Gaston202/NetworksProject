@@ -35,3 +35,16 @@ export function todayInputValue(now: Date = new Date()): string {
   const day = String(now.getDate()).padStart(2, '0')
   return `${now.getFullYear()}-${month}-${day}`
 }
+
+/** Tunisian dinar — the fictional hospital is in Carthage. */
+export const CURRENCY = 'TND'
+
+const moneyFormat = new Intl.NumberFormat(undefined, {
+  style: 'currency',
+  currency: CURRENCY,
+})
+
+export function formatMoney(amount: number): string {
+  return moneyFormat.format(amount)
+}
+

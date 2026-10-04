@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { EmptyState, PageError, PageLoading } from '@/components/PageState'
 import { RoleBadge } from '@/components/RoleBadge'
+import { SearchInput } from '@/components/SearchInput'
 import { SlotWindowForm } from '@/components/SlotWindowForm'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,10 +30,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useTableFilter } from '@/hooks/useTableFilter'
 import { errorMessage, request } from '@/lib/api'
 import type { DepartmentOut, DoctorOut, Role, UserOut, UserUpdateIn } from '@/lib/types'
 
 const ROLES: Role[] = ['admin', 'doctor', 'patient']
+
+const userText = (user: UserOut) => [user.full_name, user.email]
 
 /** Act 4 — user directory, staff account creation, doctor assignment. */
 export default function UsersPage() {
@@ -44,6 +48,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<UserOut | null>(null)
   const [doctors, setDoctors] = useState<DoctorOut[]>([])
   const [scheduling, setScheduling] = useState<DoctorOut | null>(null)
+  const { query, setQuery, filtered } = useTableFilter(users, { text: userText })
 
   const load = useCallback(
     async (filter: string) => {
@@ -101,7 +106,8 @@ export default function UsersPage() {
             Directory of all accounts; staff accounts are created here.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <SearchInput value={query} onChange={setQuery} label="Search users" placeholder="Name or email" />
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-36" aria-label="Filter by role">
               <SelectValue />
@@ -121,9 +127,9 @@ export default function UsersPage() {
 
       {error !== null ? (
         <PageError error={error} />
-      ) : users === null ? (
+      ) : filtered === null ? (
         <PageLoading rows={3} />
-      ) : users.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <EmptyState title="No users match this filter" />
       ) : (
         <div className="rounded-lg border">
@@ -138,7 +144,7 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {filtered.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>{user.id}</TableCell>
                   <TableCell className="font-medium">{user.full_name}</TableCell>

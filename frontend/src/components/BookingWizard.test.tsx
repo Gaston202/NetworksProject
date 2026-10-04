@@ -49,6 +49,9 @@ const APPOINTMENT: AppointmentOut = {
   starts_at: '2026-10-05T09:00:00Z',
   ends_at: '2026-10-05T09:30:00Z',
   created_at: '2026-10-02T10:00:00Z',
+  patient_name: 'Sami Patient',
+  doctor_name: 'Dr. Sara Benali',
+  department_name: 'Cardiology',
 }
 
 // The picker labels slots in the viewer's local timezone — compute the label

@@ -80,6 +80,10 @@ export interface AppointmentOut {
   starts_at: string
   ends_at: string
   created_at: string
+  // Display names resolved by the API (null if a profile was removed).
+  patient_name: string | null
+  doctor_name: string | null
+  department_name: string | null
 }
 
 export interface AppointmentDetailOut extends AppointmentOut {
@@ -121,4 +125,8 @@ export interface InvoiceOut {
   total: number
   status: InvoiceStatus
   created_at: string
+  patient_name: string | null
+  doctor_name: string | null
+  department_name: string | null
+  visit_starts_at: string | null
 }
