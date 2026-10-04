@@ -13,6 +13,7 @@ API (appointments, clinical, billing, admin) is in progress — see the
 
 | Doc | Purpose |
 |-----|---------|
+| **[DEPLOY.md](DEPLOY.md)** | **Team guide: deploy HMS on your own VMs, commands only** |
 | [docs/domain-model.md](docs/domain-model.md) | Entities, relationships, invariants |
 | [docs/glossary.md](docs/glossary.md) | Ubiquitous language — the terms the code must use |
 | [docs/adr/](docs/adr/) | 16 architecture decision records (ADR-0013 withdrawn 2026-10-01; ADR-0016 supersedes 0002/0005) |
