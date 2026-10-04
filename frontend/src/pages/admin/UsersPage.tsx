@@ -48,7 +48,7 @@ export default function UsersPage() {
   const load = useCallback(
     async (filter: string) => {
       try {
-        const list = await request<UserOut[]>('/admin/users', {
+        const list = await request<UserOut[]>('/users', {
           query: {
             role: filter === 'all' ? undefined : filter,
           },
@@ -423,7 +423,7 @@ function EditUserDialog({
         if (departmentId !== '') body.department_id = Number(departmentId)
         if (specialty.trim() !== '') body.specialty = specialty.trim()
       }
-      const updated = await request<UserOut>(`/admin/users/${user.id}`, {
+      const updated = await request<UserOut>(`/users/${user.id}`, {
         method: 'PATCH',
         body,
       })

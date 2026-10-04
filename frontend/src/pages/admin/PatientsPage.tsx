@@ -23,7 +23,7 @@ export default function PatientsPage() {
 
   const load = useCallback(async () => {
     try {
-      setPatients(await request<PatientOut[]>('/admin/patients'))
+      setPatients(await request<PatientOut[]>('/patients'))
       setError(null)
     } catch (err) {
       setError(err)
