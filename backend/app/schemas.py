@@ -2,7 +2,7 @@
 from datetime import date as date_t, datetime
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 
 from app.core.security import BCRYPT_MAX_BYTES
 
@@ -59,6 +59,57 @@ class StaffCreateIn(BaseModel):
     password: NewPassword
     role: str  # admin | doctor
     department_id: int | None = None
+    specialty: str | None = None
+
+
+# --- Self-service profile (any signed-in user) ---
+
+def _blank_to_none(value: str | None) -> str | None:
+    """An empty field clears the stored value."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+Phone = Annotated[str | None, Field(default=None, max_length=32,
+                                    pattern=r"^[0-9+()\-\s]*$"),
+                  AfterValidator(_blank_to_none)]
+Address = Annotated[str | None, Field(default=None, max_length=200),
+                    AfterValidator(_blank_to_none)]
+
+
+class ProfileUpdateIn(BaseModel):
+    """What a user may change about themselves. Email, role, department and
+    activation stay admin-controlled; unknown fields are rejected (422) so a
+    smuggled `role` can never be silently accepted."""
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str | None = Field(default=None, min_length=2, max_length=120)
+    phone: Phone = None      # patients only
+    address: Address = None  # patients only
+
+
+class PasswordChangeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(max_length=128)
+    new_password: NewPassword
+
+
+class ProfileOut(BaseModel):
+    """The signed-in user's own account + role-specific details."""
+    id: int
+    full_name: str
+    email: EmailStr
+    role: str
+    created_at: datetime
+    # Patients
+    phone: str | None = None
+    address: str | None = None
+    date_of_birth: datetime | None = None
+    # Doctors
+    department_name: str | None = None
     specialty: str | None = None
 
 

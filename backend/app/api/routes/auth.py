@@ -8,7 +8,16 @@ from app.api.deps import get_current_user, require_role
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.mongo import date_to_dt, get_db, next_id, strip_id, utcnow
 from app.domain import UserRole
-from app.schemas import LoginIn, RegisterIn, StaffCreateIn, TokenOut, UserOut
+from app.schemas import (
+    LoginIn,
+    PasswordChangeIn,
+    ProfileOut,
+    ProfileUpdateIn,
+    RegisterIn,
+    StaffCreateIn,
+    TokenOut,
+    UserOut,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -62,6 +71,63 @@ async def login(payload: LoginIn,
 @router.get("/me", response_model=UserOut)
 async def me(user: dict = Depends(get_current_user)) -> dict:
     return strip_id(user)
+
+
+async def _profile_out(db: AsyncIOMotorDatabase, user: dict) -> ProfileOut:
+    data = strip_id(user)
+    if user["role"] == UserRole.PATIENT.value:
+        profile = await db["patient_profiles"].find_one({"user_id": user["_id"]}) or {}
+        data.update(phone=profile.get("phone"), address=profile.get("address"),
+                    date_of_birth=profile.get("date_of_birth"))
+    elif user["role"] == UserRole.DOCTOR.value:
+        profile = await db["doctor_profiles"].find_one({"user_id": user["_id"]}) or {}
+        department = (await db["departments"].find_one({"_id": profile["department_id"]})
+                      if profile.get("department_id") is not None else None)
+        data.update(specialty=profile.get("specialty"),
+                    department_name=department["name"] if department else None)
+    return ProfileOut(**data)
+
+
+@router.get("/me/profile", response_model=ProfileOut)
+async def my_profile(db: AsyncIOMotorDatabase = Depends(get_db),
+                     user: dict = Depends(get_current_user)) -> ProfileOut:
+    return await _profile_out(db, user)
+
+
+@router.patch("/me", response_model=ProfileOut)
+async def update_my_profile(payload: ProfileUpdateIn,
+                            db: AsyncIOMotorDatabase = Depends(get_db),
+                            user: dict = Depends(get_current_user)) -> ProfileOut:
+    """Self-service edit: name for everyone; phone/address for patients (the
+    only role with a contact record). Only fields present in the body change."""
+    changes = payload.model_dump(exclude_unset=True)
+    contact = {key: changes.pop(key) for key in ("phone", "address") if key in changes}
+    if contact and user["role"] != UserRole.PATIENT.value:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "Only patient accounts have phone and address")
+    if changes.get("full_name") is not None:
+        await db["users"].update_one(
+            {"_id": user["_id"]}, {"$set": {"full_name": changes["full_name"].strip()}})
+    if contact:
+        await db["patient_profiles"].update_one({"user_id": user["_id"]}, {"$set": contact})
+    return await _profile_out(db, await db["users"].find_one({"_id": user["_id"]}))
+
+
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_my_password(payload: PasswordChangeIn,
+                             db: AsyncIOMotorDatabase = Depends(get_db),
+                             user: dict = Depends(get_current_user)) -> None:
+    """Requires the current password, so a stolen token alone can't take over
+    the account. Existing tokens stay valid until they expire (stateless JWT)."""
+    if not await run_in_threadpool(
+            verify_password, payload.current_password, user["password_hash"]):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect")
+    if payload.new_password == payload.current_password:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "New password must differ from the current one")
+    password_hash = await run_in_threadpool(hash_password, payload.new_password)
+    await db["users"].update_one(
+        {"_id": user["_id"]}, {"$set": {"password_hash": password_hash}})
 
 
 @router.post(

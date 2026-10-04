@@ -227,6 +227,28 @@ _, past_appt = call("POST", "/appointments", token=fresh,
 call("PATCH", f"/appointments/{past_appt['id']}/cancel", token=fresh, expect=409)
 step("patient cancelling a past appointment -> 409")
 
+# --- self-service profile ------------------------------------------------------
+_, profile = call("GET", "/auth/me/profile", token=fresh, expect=200)
+assert profile["role"] == "patient", profile
+call("PATCH", "/auth/me", token=fresh, body={"role": "admin"}, expect=422)
+step("profile edit cannot smuggle a role change -> 422")
+_, profile = call("PATCH", "/auth/me", token=fresh, body={
+    "phone": "+216 20 000 000", "address": "1 Rue du Test, Tunis"}, expect=200)
+assert profile["phone"] == "+216 20 000 000" and profile["role"] == "patient", profile
+step("patient updates own phone/address (200)")
+call("PATCH", "/auth/me", token=doctor, body={"phone": "+216 20 000 000"}, expect=422)
+step("staff accounts have no contact record -> 422")
+call("POST", "/auth/me/password", token=fresh, body={
+    "current_password": "wrong-password", "new_password": "e2e-password-2"}, expect=400)
+step("password change with wrong current password -> 400")
+call("POST", "/auth/me/password", token=fresh, body={
+    "current_password": "e2e-password-1", "new_password": "e2e-password-2"}, expect=204)
+call("POST", "/auth/login", body={
+    "email": "e2e.fresh@example.com", "password": "e2e-password-2"}, expect=200)
+call("POST", "/auth/me/password", token=fresh, body={
+    "current_password": "e2e-password-2", "new_password": "e2e-password-1"}, expect=204)
+step("password change round-trip; new password logs in (204/200)")
+
 # --- deactivation ---------------------------------------------------------------
 code, users = call("GET", "/users", token=admin, expect=200)
 fresh_user = next(u for u in users if u["email"] == "e2e.fresh@example.com")
