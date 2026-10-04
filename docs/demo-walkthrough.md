@@ -21,8 +21,9 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
 - [ ] On LabServer: `systemctl status hms-api nginx` both active
 - [ ] SPA loads on both clients: `http://192.168.100.10/`
 - [ ] `python3 http_scenarios.py` on a client → all rows PASS (Pass-tier HTTP scenarios)
-- [ ] Database seeded (6 demo users: admin, 3 doctors, 2 patients; departments with
-      doctors; slots bookable; one historic completed visit)
+- [ ] Database seeded (Carthage Medical Center: 6 departments, 8 doctors, 20 patients,
+      two weeks of visit history with invoices, upcoming bookings; the 6 scripted
+      accounts above are unchanged and Dr. Haddad's week is mostly free)
 
 ## The story: one patient's visit, end to end
 
