@@ -15,6 +15,7 @@ import UsersPage from '@/pages/admin/UsersPage'
 import DepartmentsPage from '@/pages/admin/DepartmentsPage'
 import PatientsPage from '@/pages/admin/PatientsPage'
 import BillingPage from '@/pages/admin/BillingPage'
+import ProfilePage from '@/pages/ProfilePage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="book" element={<BookPage />} />
           <Route path="appointments" element={<MyAppointmentsPage />} />
           <Route path="records" element={<MyRecordsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>
 
@@ -36,6 +38,7 @@ export default function App() {
           <Route index element={<DoctorHomePage />} />
           <Route path="queue" element={<DoctorAppointmentsPage />} />
           <Route path="schedule" element={<SchedulePage />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>
 
@@ -46,6 +49,7 @@ export default function App() {
           <Route path="departments" element={<DepartmentsPage />} />
           <Route path="patients" element={<PatientsPage />} />
           <Route path="billing" element={<BillingPage />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>
 

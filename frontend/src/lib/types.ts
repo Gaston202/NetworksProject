@@ -45,6 +45,25 @@ export interface UserUpdateIn {
   is_active?: boolean
 }
 
+export interface ProfileOut extends UserOut {
+  phone: string | null
+  address: string | null
+  date_of_birth: string | null
+  department_name: string | null
+  specialty: string | null
+}
+
+export interface ProfileUpdateIn {
+  full_name?: string
+  phone?: string
+  address?: string
+}
+
+export interface PasswordChangeIn {
+  current_password: string
+  new_password: string
+}
+
 // --- Scheduling ---
 
 export interface DepartmentOut {

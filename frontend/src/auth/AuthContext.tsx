@@ -18,6 +18,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<UserOut>
   register: (payload: RegisterIn) => Promise<UserOut>
   logout: () => void
+  /** Re-read /auth/me after a self-service profile edit. */
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -90,14 +92,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [login])
 
+  const refreshUser = useCallback(async () => {
+    const stored = readSession()
+    if (stored === null) return
+    const me = await request<UserOut>('/auth/me')
+    writeSession({
+      token: stored.token,
+      user: { id: me.id, full_name: me.full_name, email: me.email, role: me.role },
+    })
+    setUser(me)
+  }, [])
+
   const logout = useCallback(() => {
     clearSession()
     setUser(null)
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout }),
-    [user, loading, login, register, logout],
+    () => ({ user, loading, login, register, logout, refreshUser }),
+    [user, loading, login, register, logout, refreshUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

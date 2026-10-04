@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CalendarPlus,
   CalendarRange,
+  CircleUserRound,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -86,10 +87,18 @@ export function AppShell({ role }: { role: Role }) {
         </nav>
         <Separator />
         <div className="flex items-center gap-2 p-3">
-          <div className="min-w-0 flex-1">
+          <NavLink
+            to={`/${role}/profile`}
+            className={({ isActive }) =>
+              `-m-1 min-w-0 flex-1 rounded-md p-1 transition-colors hover:bg-sidebar-accent/60 ${
+                isActive ? 'bg-sidebar-accent' : ''
+              }`
+            }
+            aria-label="My profile"
+          >
             <p className="truncate text-sm font-medium">{user?.full_name}</p>
             <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-          </div>
+          </NavLink>
           <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out">
             <LogOut className="size-4" />
           </Button>
@@ -118,6 +127,13 @@ export function AppShell({ role }: { role: Role }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <NavLink
+              to={`/${role}/profile`}
+              aria-label="My profile"
+              className="rounded-md p-2 text-muted-foreground hover:text-foreground md:hidden"
+            >
+              <CircleUserRound className="size-4" />
+            </NavLink>
             <RoleBadge role={role} />
             <Button variant="ghost" size="sm" onClick={handleLogout} className="md:hidden">
               <LogOut className="size-4" />
