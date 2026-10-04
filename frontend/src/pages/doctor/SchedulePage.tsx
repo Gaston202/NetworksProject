@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useAuth } from '@/auth/AuthContext'
 import { EmptyState, PageError, PageLoading } from '@/components/PageState'
 import { SlotWindowForm } from '@/components/SlotWindowForm'
 import { Badge } from '@/components/ui/badge'
@@ -10,9 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { useOwnDoctorProfile } from '@/hooks/useOwnDoctorProfile'
 import { request } from '@/lib/api'
 import { dayKey, formatDay, formatTime } from '@/lib/format'
-import type { DoctorOut, SlotOut } from '@/lib/types'
+import type { SlotOut } from '@/lib/types'
 
 const DAYS_SHOWN = 7
 
@@ -32,33 +32,23 @@ function groupUpcoming(slots: SlotOut[], now: Date): [string, SlotOut[]][] {
 
 /** Doctor's own calendar: the next week of slots + "Open availability". */
 export default function SchedulePage() {
-  const { user } = useAuth()
-  const [doctor, setDoctor] = useState<DoctorOut | null>(null)
+  const { doctor, error: profileError } = useOwnDoctorProfile()
   const [slots, setSlots] = useState<SlotOut[] | null>(null)
-  const [error, setError] = useState<unknown>(null)
+  const [slotsError, setSlotsError] = useState<unknown>(null)
+  const error = profileError ?? slotsError
 
   const loadSlots = useCallback(async (doctorId: number) => {
     try {
       setSlots(await request<SlotOut[]>(`/doctors/${doctorId}/slots`))
-      setError(null)
+      setSlotsError(null)
     } catch (err) {
-      setError(err)
+      setSlotsError(err)
     }
   }, [])
 
   useEffect(() => {
-    if (user === null) return
-    // The directory is the only place the doctor_profile id is exposed;
-    // emails are unique, so match the signed-in account on it.
-    request<DoctorOut[]>('/doctors')
-      .then((doctors) => {
-        const own = doctors.find((candidate) => candidate.email === user.email)
-        if (own === undefined) throw new Error('No doctor profile is linked to this account')
-        setDoctor(own)
-        return loadSlots(own.id)
-      })
-      .catch(setError)
-  }, [user, loadSlots])
+    if (doctor !== null) void loadSlots(doctor.id)
+  }, [doctor, loadSlots])
 
   const days = useMemo(() => (slots === null ? [] : groupUpcoming(slots, new Date())), [slots])
   const freeCount = days.reduce(

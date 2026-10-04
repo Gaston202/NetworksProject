@@ -4,5 +4,5 @@ import type { Role } from './types'
 export const HOME_PATH: Record<Role, string> = {
   patient: '/patient',
   doctor: '/doctor',
-  admin: '/admin/users',
+  admin: '/admin',
 }

@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   CalendarRange,
   FileText,
+  LayoutDashboard,
   LogOut,
   ReceiptText,
   UserRound,
@@ -28,15 +29,18 @@ interface NavItem {
 
 const NAV: Record<Role, NavItem[]> = {
   patient: [
-    { to: '/patient', label: 'Book appointment', icon: CalendarPlus, end: true },
+    { to: '/patient', label: 'Home', icon: LayoutDashboard, end: true },
+    { to: '/patient/book', label: 'Book appointment', icon: CalendarPlus },
     { to: '/patient/appointments', label: 'My appointments', icon: CalendarRange },
     { to: '/patient/records', label: 'My records', icon: FileText },
   ],
   doctor: [
-    { to: '/doctor', label: 'My queue', icon: CalendarRange, end: true },
+    { to: '/doctor', label: 'Home', icon: LayoutDashboard, end: true },
+    { to: '/doctor/queue', label: 'My queue', icon: CalendarRange },
     { to: '/doctor/schedule', label: 'My schedule', icon: CalendarClock },
   ],
   admin: [
+    { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/departments', label: 'Departments', icon: Building2 },
     { to: '/admin/patients', label: 'Patients & walk-in', icon: UserRound },

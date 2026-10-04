@@ -48,3 +48,28 @@ export function formatMoney(amount: number): string {
   return moneyFormat.format(amount)
 }
 
+
+export function isSameLocalDay(iso: string, day: Date = new Date()): boolean {
+  const date = new Date(iso)
+  return (
+    date.getFullYear() === day.getFullYear() &&
+    date.getMonth() === day.getMonth() &&
+    date.getDate() === day.getDate()
+  )
+}
+
+export function greeting(now: Date = new Date()): string {
+  const hour = now.getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+export function formatLongDate(now: Date = new Date()): string {
+  return now.toLocaleDateString(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
