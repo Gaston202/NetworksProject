@@ -122,6 +122,10 @@ class AppointmentOut(BaseModel):
     starts_at: datetime
     ends_at: datetime
     created_at: datetime
+    # Display names, resolved per response (app/api/display.py).
+    patient_name: str | None = None
+    doctor_name: str | None = None
+    department_name: str | None = None
 
 
 class AppointmentDetailOut(AppointmentOut):
@@ -156,6 +160,11 @@ class InvoiceOut(BaseModel):
     total: float
     status: str
     created_at: datetime
+    # The visit this invoice bills, for display (app/api/display.py).
+    patient_name: str | None = None
+    doctor_name: str | None = None
+    department_name: str | None = None
+    visit_starts_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

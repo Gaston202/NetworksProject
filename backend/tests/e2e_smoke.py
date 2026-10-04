@@ -146,6 +146,9 @@ step("second consultation on same appointment -> 409 (one per appointment)")
 
 code, doc_list = call("GET", "/appointments", token=doctor, expect=200)
 assert all(a["doctor_id"] == appt_detail["doctor_id"] for a in doc_list)
+mine = next(a for a in doc_list if a["id"] == appt["id"])
+assert mine["patient_name"] == "Sami Patient", mine["patient_name"]
+assert mine["doctor_name"] == cardio["full_name"] and mine["department_name"] == "Cardiology"
 step("doctor sees only own appointments")
 
 # --- complete + derived invoice ----------------------------------------------
@@ -167,6 +170,8 @@ step("cancelling a completed appointment -> 409")
 
 # --- Act 3: billing -----------------------------------------------------------
 code, invoices = call("GET", "/invoices", token=admin, expect=200)
+named = next(i for i in invoices if i["appointment_id"] == appt["id"])
+assert named["patient_name"] == "Sami Patient" and named["visit_starts_at"], named
 inv = next(i for i in invoices if i["appointment_id"] == appt["id"])
 code, paid = call("PATCH", f"/invoices/{inv['id']}/paid", token=admin, expect=200)
 assert paid["status"] == "paid"

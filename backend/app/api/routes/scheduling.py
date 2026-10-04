@@ -15,6 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import BulkWriteError, DuplicateKeyError, PyMongoError
 
 from app.api.deps import get_current_user, require_role
+from app.api.display import appointment_names, invoices_out
 from app.core.config import settings
 from app.db.mongo import get_db, next_id, reserve_ids, strip_id, utcnow
 from app.domain import AppointmentStatus, InvoiceStatus, UserRole
@@ -81,19 +82,25 @@ def _consultation_out(appointment: dict) -> dict | None:
     }
 
 
-async def _out(db: AsyncIOMotorDatabase, appointment: dict, detail: bool) -> dict:
+async def _out(db: AsyncIOMotorDatabase, appointment: dict, detail: bool,
+               names: dict | None = None) -> dict:
     """Appointment dict; slot times were copied at booking, so no joins are needed.
 
     Cancelled appointments lost `slot_id` (it was $unset) but kept
     `original_slot_id` — the response keeps an int slot_id either way.
+    `names` is this row's entry from a batched appointment_names() call; single
+    rows resolve their own.
     """
+    if names is None:
+        names = (await appointment_names(db, [appointment]))[appointment["_id"]]
     data = strip_id(appointment)
     data["slot_id"] = appointment.get("slot_id",
                                       appointment.get("original_slot_id"))
+    data.update(names)
     if detail:
         data["consultation"] = _consultation_out(appointment)
         invoice = await db["invoices"].find_one({"appointment_id": appointment["_id"]})
-        data["invoice"] = strip_id(invoice) if invoice else None
+        data["invoice"] = (await invoices_out(db, [invoice]))[0] if invoice else None
     return data
 
 
@@ -373,7 +380,9 @@ async def list_appointments(
         query["status"] = status_filter
     rows = await db["appointments"].find(query).sort(
         "starts_at", -1).to_list(length=None)
-    return [AppointmentOut(**await _out(db, doc, detail=False)) for doc in rows]
+    names = await appointment_names(db, rows)
+    return [AppointmentOut(**await _out(db, doc, detail=False, names=names[doc["_id"]]))
+            for doc in rows]
 
 
 @router.get("/appointments/{appointment_id}", response_model=AppointmentDetailOut,
