@@ -10,7 +10,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 BASE = os.environ.get("HMS_BASE", "http://localhost:8000/api")
 PASSWORD = os.environ.get("HMS_PASSWORD", "hms-demo-1234")
@@ -104,6 +104,20 @@ code, slots = call("GET", f"/doctors/{cardio['id']}/slots?free=true",
 assert len(slots) > 0, "no free slots"
 slot = slots[0]
 step(f"{len(slots)} free slots; picked {slot['starts_at']}")
+
+# A day of margin keeps these checks independent of client/server time zones.
+day_ago = (datetime.now() - timedelta(days=1)).isoformat()
+assert all(s["starts_at"] > day_ago for s in slots), "free list offers past slots"
+step("free slot list offers no past slots")
+
+code, all_slots = call("GET", f"/doctors/{cardio['id']}/slots",
+                       token=patient, expect=200)
+past_slot = next((s for s in all_slots if s["starts_at"] < day_ago), None)
+if past_slot is not None:
+    code, err = call("POST", "/appointments", token=patient,
+                     body={"slot_id": past_slot["id"]}, expect=409)
+    assert "already started" in err["detail"], err
+    step("booking a past slot -> 409")
 
 code, appt = call("POST", "/appointments", token=patient,
                   body={"slot_id": slot["id"]}, expect=201)
@@ -208,6 +222,12 @@ code, created = call("POST", f"/doctors/{other['id']}/slots", token=admin, body=
     "hours_per_day": 1.5}, expect=201)
 step("admin bulk-creates slots for a doctor (201)")
 
+yesterday = (date.today() - timedelta(days=1)).isoformat()
+call("POST", f"/doctors/{other['id']}/slots", token=admin, body={
+    "first_date": yesterday, "days": 1, "start_hour": 9,
+    "hours_per_day": 1}, expect=422)
+step("creating slots that start in the past -> 422")
+
 code, _ = call("POST", f"/doctors/{other['id']}/slots", token=doctor, body={
     "first_date": in_ten_days, "days": 1, "start_hour": 17, "hours_per_day": 1})
 assert code == 403, f"doctor must not create slots for another doctor: {code}"
@@ -218,13 +238,11 @@ assert code == 409, code
 step("deleting a department with doctors -> 409 (referential safety)")
 
 # --- cancellation is for future visits only -----------------------------------
-yesterday = (date.today() - timedelta(days=1)).isoformat()
-code, past_slots = call("POST", f"/doctors/{other['id']}/slots", token=admin, body={
-    "first_date": yesterday, "days": 1, "start_hour": 20,
-    "hours_per_day": 0.5}, expect=201)
-_, past_appt = call("POST", "/appointments", token=fresh,
-                    body={"slot_id": past_slots[0]["id"]}, expect=201)
-call("PATCH", f"/appointments/{past_appt['id']}/cancel", token=fresh, expect=409)
+# Past slots can't be booked, so use the seed's guaranteed past visit for Sami.
+_, sami_list = call("GET", "/appointments", token=patient, expect=200)
+past_appt = next(a for a in sami_list
+                 if a["starts_at"] < day_ago and a["status"] == "completed")
+call("PATCH", f"/appointments/{past_appt['id']}/cancel", token=patient, expect=409)
 step("patient cancelling a past appointment -> 409")
 
 # --- self-service profile ------------------------------------------------------
