@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
+import { AuthLayout } from '@/components/AuthLayout'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -44,12 +45,12 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
+    <AuthLayout>
+      <Card className="w-full max-w-sm shadow-sm">
         <CardHeader>
-          <CardTitle>Sign in</CardTitle>
+          <CardTitle className="text-xl">Welcome back</CardTitle>
           <CardDescription>
-            Hospital Management System — admin, doctor, and patient accounts.
+            Sign in to the patient portal or staff workspace.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,6 +93,6 @@ export default function LoginPage() {
           </p>
         </CardFooter>
       </Card>
-    </main>
+    </AuthLayout>
   )
 }

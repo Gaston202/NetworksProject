@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { AppointmentStatusBadge, InvoiceStatusBadge } from '@/components/StatusBadge'
 import { EmptyState, PageError, PageLoading } from '@/components/PageState'
+import { SearchInput } from '@/components/SearchInput'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -18,6 +19,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import {
   Table,
@@ -28,7 +36,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { useTableFilter } from '@/hooks/useTableFilter'
 import { errorMessage, request } from '@/lib/api'
+import { formatMoney } from '@/lib/format'
 import type { AppointmentDetailOut, AppointmentOut } from '@/lib/types'
 
 const whenFormat = new Intl.DateTimeFormat(undefined, {
@@ -40,12 +50,35 @@ const whenFormat = new Intl.DateTimeFormat(undefined, {
   hour12: false,
 })
 
+type QueueBucket = 'open' | 'completed' | 'cancelled'
+
+/** booked + consulted are the visits still waiting on the doctor. */
+const queueBucket = (appointment: AppointmentOut): QueueBucket =>
+  appointment.status === 'completed'
+    ? 'completed'
+    : appointment.status === 'booked' || appointment.status === 'consulted'
+      ? 'open'
+      : 'cancelled'
+
+const queueText = (appointment: AppointmentOut) => [appointment.patient_name]
+
 /** Act 2 — the doctor's own queue; opening an appointment is the consultation
  * screen (write diagnosis → mark completed → invoice is returned). */
 export default function DoctorAppointmentsPage() {
   const [appointments, setAppointments] = useState<AppointmentOut[] | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [openId, setOpenId] = useState<number | null>(null)
+  const { query, setQuery, statusFilter, setStatusFilter, filtered } = useTableFilter(
+    appointments,
+    { text: queueText, status: queueBucket, initialStatus: 'open' },
+  )
+  // Open visits read like a day planner (soonest first); history newest first.
+  const rows =
+    filtered === null
+      ? null
+      : statusFilter === 'open'
+        ? [...filtered].reverse()
+        : filtered
 
   const load = useCallback(async () => {
     try {
@@ -63,22 +96,45 @@ export default function DoctorAppointmentsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">My queue</h1>
-        <p className="text-sm text-muted-foreground">
-          Write the consultation, then mark the visit complete — the invoice is
-          derived automatically.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">My queue</h1>
+          <p className="text-sm text-muted-foreground">
+            Write the consultation, then mark the visit complete — the invoice is
+            derived automatically.
+          </p>
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <SearchInput value={query} onChange={setQuery} label="Search patients" />
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as QueueBucket | 'all')}
+          >
+            <SelectTrigger className="w-36" aria-label="Filter visits">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="open">Open visits</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">All visits</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {error !== null ? (
         <PageError error={error} />
-      ) : appointments === null ? (
+      ) : rows === null ? (
         <PageLoading rows={3} />
-      ) : appointments.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState
-          title="No appointments in your queue"
-          hint="Patients book you through the scheduling flow."
+          title={query === '' ? 'Nothing in this view' : 'No patients match your search'}
+          hint={
+            statusFilter === 'open' && query === ''
+              ? 'Patients book you through the scheduling flow.'
+              : undefined
+          }
         />
       ) : (
         <div className="rounded-lg border">
@@ -92,11 +148,13 @@ export default function DoctorAppointmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {appointments.map((appointment) => (
+              {rows.map((appointment) => (
                 <TableRow key={appointment.id}>
-                  <TableCell>{whenFormat.format(new Date(appointment.starts_at))}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    profile #{appointment.patient_id}
+                  <TableCell className="tabular">
+                    {whenFormat.format(new Date(appointment.starts_at))}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {appointment.patient_name ?? `Patient #${appointment.patient_id}`}
                   </TableCell>
                   <TableCell>
                     <AppointmentStatusBadge status={appointment.status} />
@@ -113,14 +171,25 @@ export default function DoctorAppointmentsPage() {
         </div>
       )}
 
-      <Dialog open={openId !== null} onOpenChange={(open) => { if (!open) setOpenId(null) }}>
+      <Dialog
+        open={openId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenId(null)
+            void load() // reflect consultation/completion in the list
+          }
+        }}
+      >
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
           {openId !== null && (
             <>
               <DialogHeader>
-                <DialogTitle>Appointment #{openId}</DialogTitle>
+                <DialogTitle>
+                  {appointments?.find((row) => row.id === openId)?.patient_name ??
+                    `Appointment #${openId}`}
+                </DialogTitle>
                 <DialogDescription>
-                  Consultation and completion for this visit.
+                  Visit #{openId} — consultation and completion.
                 </DialogDescription>
               </DialogHeader>
               <AppointmentDetail id={openId} />
@@ -194,7 +263,7 @@ function AppointmentDetail({ id }: { id: number }) {
       toast.success('Visit completed', {
         description:
           completed.invoice !== null
-            ? `Invoice #${completed.invoice.id} — $${completed.invoice.total.toFixed(2)}`
+            ? `Invoice #${completed.invoice.id} — ${formatMoney(completed.invoice.total)}`
             : undefined,
       })
     } catch (err) {
@@ -218,7 +287,8 @@ function AppointmentDetail({ id }: { id: number }) {
         <div>
           <p className="font-medium">{whenFormat.format(new Date(detail.starts_at))}</p>
           <p className="text-xs text-muted-foreground">
-            Patient profile #{detail.patient_id} · slot #{detail.slot_id}
+            {detail.patient_name ?? `Patient #${detail.patient_id}`} ·{' '}
+            {detail.department_name ?? 'Visit'}
           </p>
         </div>
         <AppointmentStatusBadge status={detail.status} />
@@ -299,7 +369,7 @@ function AppointmentDetail({ id }: { id: number }) {
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <p className="text-sm font-medium">
-                  Invoice #{detail.invoice.id} — ${detail.invoice.total.toFixed(2)}
+                  Invoice #{detail.invoice.id} — {formatMoney(detail.invoice.total)}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Derived on completion; payment is recorded by the front desk.

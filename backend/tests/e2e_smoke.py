@@ -146,6 +146,9 @@ step("second consultation on same appointment -> 409 (one per appointment)")
 
 code, doc_list = call("GET", "/appointments", token=doctor, expect=200)
 assert all(a["doctor_id"] == appt_detail["doctor_id"] for a in doc_list)
+mine = next(a for a in doc_list if a["id"] == appt["id"])
+assert mine["patient_name"] == "Sami Patient", mine["patient_name"]
+assert mine["doctor_name"] == cardio["full_name"] and mine["department_name"] == "Cardiology"
 step("doctor sees only own appointments")
 
 # --- complete + derived invoice ----------------------------------------------
@@ -167,6 +170,8 @@ step("cancelling a completed appointment -> 409")
 
 # --- Act 3: billing -----------------------------------------------------------
 code, invoices = call("GET", "/invoices", token=admin, expect=200)
+named = next(i for i in invoices if i["appointment_id"] == appt["id"])
+assert named["patient_name"] == "Sami Patient" and named["visit_starts_at"], named
 inv = next(i for i in invoices if i["appointment_id"] == appt["id"])
 code, paid = call("PATCH", f"/invoices/{inv['id']}/paid", token=admin, expect=200)
 assert paid["status"] == "paid"
@@ -221,6 +226,28 @@ _, past_appt = call("POST", "/appointments", token=fresh,
                     body={"slot_id": past_slots[0]["id"]}, expect=201)
 call("PATCH", f"/appointments/{past_appt['id']}/cancel", token=fresh, expect=409)
 step("patient cancelling a past appointment -> 409")
+
+# --- self-service profile ------------------------------------------------------
+_, profile = call("GET", "/auth/me/profile", token=fresh, expect=200)
+assert profile["role"] == "patient", profile
+call("PATCH", "/auth/me", token=fresh, body={"role": "admin"}, expect=422)
+step("profile edit cannot smuggle a role change -> 422")
+_, profile = call("PATCH", "/auth/me", token=fresh, body={
+    "phone": "+216 20 000 000", "address": "1 Rue du Test, Tunis"}, expect=200)
+assert profile["phone"] == "+216 20 000 000" and profile["role"] == "patient", profile
+step("patient updates own phone/address (200)")
+call("PATCH", "/auth/me", token=doctor, body={"phone": "+216 20 000 000"}, expect=422)
+step("staff accounts have no contact record -> 422")
+call("POST", "/auth/me/password", token=fresh, body={
+    "current_password": "wrong-password", "new_password": "e2e-password-2"}, expect=400)
+step("password change with wrong current password -> 400")
+call("POST", "/auth/me/password", token=fresh, body={
+    "current_password": "e2e-password-1", "new_password": "e2e-password-2"}, expect=204)
+call("POST", "/auth/login", body={
+    "email": "e2e.fresh@example.com", "password": "e2e-password-2"}, expect=200)
+call("POST", "/auth/me/password", token=fresh, body={
+    "current_password": "e2e-password-2", "new_password": "e2e-password-1"}, expect=204)
+step("password change round-trip; new password logs in (204/200)")
 
 # --- deactivation ---------------------------------------------------------------
 code, users = call("GET", "/users", token=admin, expect=200)

@@ -45,6 +45,25 @@ export interface UserUpdateIn {
   is_active?: boolean
 }
 
+export interface ProfileOut extends UserOut {
+  phone: string | null
+  address: string | null
+  date_of_birth: string | null
+  department_name: string | null
+  specialty: string | null
+}
+
+export interface ProfileUpdateIn {
+  full_name?: string
+  phone?: string
+  address?: string
+}
+
+export interface PasswordChangeIn {
+  current_password: string
+  new_password: string
+}
+
 // --- Scheduling ---
 
 export interface DepartmentOut {
@@ -80,6 +99,10 @@ export interface AppointmentOut {
   starts_at: string
   ends_at: string
   created_at: string
+  // Display names resolved by the API (null if a profile was removed).
+  patient_name: string | null
+  doctor_name: string | null
+  department_name: string | null
 }
 
 export interface AppointmentDetailOut extends AppointmentOut {
@@ -121,4 +144,8 @@ export interface InvoiceOut {
   total: number
   status: InvoiceStatus
   created_at: string
+  patient_name: string | null
+  doctor_name: string | null
+  department_name: string | null
+  visit_starts_at: string | null
 }

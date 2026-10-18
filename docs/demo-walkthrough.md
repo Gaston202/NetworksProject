@@ -21,8 +21,9 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
 - [ ] On LabServer: `systemctl status hms-api nginx` both active
 - [ ] SPA loads on both clients: `http://192.168.100.10/`
 - [ ] `python3 http_scenarios.py` on a client → all rows PASS (Pass-tier HTTP scenarios)
-- [ ] Database seeded (6 demo users: admin, 3 doctors, 2 patients; departments with
-      doctors; slots bookable; one historic completed visit)
+- [ ] Database seeded (Carthage Medical Center: 6 departments, 8 doctors, 20 patients,
+      two weeks of visit history with invoices, upcoming bookings; the 6 scripted
+      accounts above are unchanged and Dr. Haddad's week is mostly free)
 
 ## The story: one patient's visit, end to end
 
@@ -40,21 +41,24 @@ Also seeded (for richer demos): `omar.benali@hms.example.com` (Cardiology),
 
 **Act 2 — Consultation (Doctor persona)**
 
-5. Login as **Doctor** → open the appointment → write diagnosis + notes +
-   prescription (free text).
+5. Login as **Doctor** → the **Home** dashboard shows today's list and the next
+   patient → **My queue** (open visits, soonest first) → open the appointment →
+   write diagnosis + notes + prescription (free text).
 6. Mark appointment **completed** → invoice is auto-created with the consultation
    fee. *(Show the new invoice in the response.)*
 
 **Act 3 — Billing (Admin persona)**
 
-7. Login as **Admin** → billing view → the visit's invoice shows the consultation
-   fee → mark **paid**.
+7. Login as **Admin** → billing view → type the patient's name in the search box →
+   the visit's invoice (doctor, department, visit time, TND fee) → mark **paid**.
 8. Back as **Patient** — they can see their appointment, consultation, and invoice,
    and *only* their own.
 
 **Act 4 — Management (Admin persona, quick pass)**
 
-9. Create a department, a doctor user, and show slot creation — the loop closes.
+9. Create a department, a doctor user, and open their availability from the doctor's
+   row in **Users** ("Open availability") — the new slots appear in the patient's
+   booking picker; the loop closes. *(Doctors can do the same from **My schedule**.)*
 
 ## Optional 30-second deep-dive, if the grader asks "where's the networking?"
 

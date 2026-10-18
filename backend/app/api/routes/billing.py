@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, require_role
-from app.db.mongo import get_db, strip_id
+from app.api.display import invoices_out
+from app.db.mongo import get_db
 from app.domain import InvoiceStatus, UserRole
 from app.schemas import InvoiceOut
 
@@ -36,9 +37,8 @@ async def list_invoices(status_filter: str | None = None,
             status.HTTP_403_FORBIDDEN, "Requires one of: admin, patient")
     if status_filter:
         query["status"] = status_filter
-    return [
-        strip_id(doc) async for doc in db["invoices"].find(query).sort("created_at", -1)
-    ]
+    invoices = await db["invoices"].find(query).sort("created_at", -1).to_list(length=None)
+    return await invoices_out(db, invoices)
 
 
 @router.patch("/invoices/{invoice_id}/paid", response_model=InvoiceOut,
@@ -55,4 +55,4 @@ async def mark_paid(invoice_id: int,
         raise HTTPException(status.HTTP_409_CONFLICT, "Invoice already paid")
     await db["invoices"].update_one(
         {"_id": invoice_id}, {"$set": {"status": InvoiceStatus.PAID.value}})
-    return strip_id(await db["invoices"].find_one({"_id": invoice_id}))
+    return (await invoices_out(db, [await db["invoices"].find_one({"_id": invoice_id})]))[0]

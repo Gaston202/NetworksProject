@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { BookingWizard } from '@/components/BookingWizard'
 import { EmptyState, PageError, PageLoading } from '@/components/PageState'
+import { SearchInput } from '@/components/SearchInput'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -12,18 +13,35 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useTableFilter } from '@/hooks/useTableFilter'
 import { request } from '@/lib/api'
+import { formatDateTime } from '@/lib/format'
 import type { AppointmentOut, PatientOut } from '@/lib/types'
+
+const patientText = (patient: PatientOut) => [patient.full_name, patient.email, patient.phone]
+
+function ageOf(dateOfBirth: string | null): string {
+  if (dateOfBirth === null) return '—'
+  const born = new Date(dateOfBirth)
+  const now = new Date()
+  let age = now.getFullYear() - born.getFullYear()
+  const beforeBirthday =
+    now.getMonth() < born.getMonth() ||
+    (now.getMonth() === born.getMonth() && now.getDate() < born.getDate())
+  if (beforeBirthday) age -= 1
+  return String(age)
+}
 
 /** Act 1's walk-in beat — the front desk books on behalf of a registered patient. */
 export default function PatientsPage() {
   const [patients, setPatients] = useState<PatientOut[] | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [selected, setSelected] = useState<PatientOut | null>(null)
+  const { query, setQuery, filtered } = useTableFilter(patients, { text: patientText })
 
   const load = useCallback(async () => {
     try {
-      setPatients(await request<PatientOut[]>('/admin/patients'))
+      setPatients(await request<PatientOut[]>('/patients'))
       setError(null)
     } catch (err) {
       setError(err)
@@ -35,39 +53,49 @@ export default function PatientsPage() {
   }, [load])
 
   function handleBooked(appointment: AppointmentOut, patient: PatientOut) {
-    toast.success(`Booked ${patient.full_name} for ${new Date(appointment.starts_at).toLocaleString()}`)
+    toast.success(`Booked ${patient.full_name} — ${formatDateTime(appointment.starts_at)}`)
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Patients &amp; walk-in booking</h1>
-        <p className="text-sm text-muted-foreground">
-          Select a patient, then book the same way a patient would.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Patients &amp; walk-in booking</h1>
+          <p className="text-sm text-muted-foreground">
+            Select a patient, then book the same way a patient would.
+          </p>
+        </div>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          label="Search patients"
+          placeholder="Name, email or phone"
+        />
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
         <div>
           {error !== null ? (
             <PageError error={error} />
-          ) : patients === null ? (
+          ) : filtered === null ? (
             <PageLoading rows={3} />
-          ) : patients.length === 0 ? (
-            <EmptyState title="No registered patients yet" />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              title={query === '' ? 'No registered patients yet' : 'No patients match your search'}
+            />
           ) : (
             <div className="rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-20">Profile</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead className="hidden xl:table-cell">Phone</TableHead>
+                    <TableHead className="hidden sm:table-cell">Age</TableHead>
                     <TableHead className="text-right">Book</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {patients.map((patient) => {
+                  {filtered.map((patient) => {
                     const isSelected = selected !== null && selected.id === patient.id
                     return (
                       <TableRow
@@ -75,9 +103,16 @@ export default function PatientsPage() {
                         aria-selected={isSelected}
                         className={isSelected ? 'bg-primary/10' : ''}
                       >
-                        <TableCell>{patient.id}</TableCell>
-                        <TableCell className="font-medium">{patient.full_name}</TableCell>
-                        <TableCell className="text-muted-foreground">{patient.email}</TableCell>
+                        <TableCell>
+                          <p className="font-medium">{patient.full_name}</p>
+                          <p className="text-xs text-muted-foreground">{patient.email}</p>
+                        </TableCell>
+                        <TableCell className="tabular hidden text-muted-foreground xl:table-cell">
+                          {patient.phone ?? '—'}
+                        </TableCell>
+                        <TableCell className="tabular hidden sm:table-cell">
+                          {ageOf(patient.date_of_birth)}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             size="sm"

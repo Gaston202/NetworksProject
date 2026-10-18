@@ -1,9 +1,13 @@
+import { Suspense } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import {
   Building2,
+  CalendarClock,
   CalendarPlus,
   CalendarRange,
+  CircleUserRound,
   FileText,
+  LayoutDashboard,
   LogOut,
   ReceiptText,
   UserRound,
@@ -11,6 +15,8 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
+import { BrandLogo, BrandMark } from '@/components/BrandMark'
+import { PageLoading } from '@/components/PageState'
 import { RoleBadge } from '@/components/RoleBadge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -26,12 +32,18 @@ interface NavItem {
 
 const NAV: Record<Role, NavItem[]> = {
   patient: [
-    { to: '/patient', label: 'Book appointment', icon: CalendarPlus, end: true },
+    { to: '/patient', label: 'Home', icon: LayoutDashboard, end: true },
+    { to: '/patient/book', label: 'Book appointment', icon: CalendarPlus },
     { to: '/patient/appointments', label: 'My appointments', icon: CalendarRange },
     { to: '/patient/records', label: 'My records', icon: FileText },
   ],
-  doctor: [{ to: '/doctor', label: 'My queue', icon: CalendarRange, end: true }],
+  doctor: [
+    { to: '/doctor', label: 'Home', icon: LayoutDashboard, end: true },
+    { to: '/doctor/queue', label: 'My queue', icon: CalendarRange },
+    { to: '/doctor/schedule', label: 'My schedule', icon: CalendarClock },
+  ],
   admin: [
+    { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/departments', label: 'Departments', icon: Building2 },
     { to: '/admin/patients', label: 'Patients & walk-in', icon: UserRound },
@@ -53,8 +65,8 @@ export function AppShell({ role }: { role: Role }) {
   return (
     <div className="flex min-h-svh">
       <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
-        <div className="flex h-14 items-center px-4 text-sm font-semibold tracking-tight">
-          Hospital Management System
+        <div className="flex h-16 items-center px-4">
+          <BrandMark />
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-2 py-2">
           {items.map((item) => (
@@ -64,8 +76,8 @@ export function AppShell({ role }: { role: Role }) {
               end={item.end}
               className={({ isActive }) =>
                 isActive
-                  ? 'rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary'
-                  : 'rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
+                  ? 'rounded-md bg-sidebar-accent px-3 py-2 text-sm font-medium text-sidebar-accent-foreground'
+                  : 'rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground'
               }
             >
               <span className="flex items-center gap-2">
@@ -77,10 +89,18 @@ export function AppShell({ role }: { role: Role }) {
         </nav>
         <Separator />
         <div className="flex items-center gap-2 p-3">
-          <div className="min-w-0 flex-1">
+          <NavLink
+            to={`/${role}/profile`}
+            className={({ isActive }) =>
+              `-m-1 min-w-0 flex-1 rounded-md p-1 transition-colors hover:bg-sidebar-accent/60 ${
+                isActive ? 'bg-sidebar-accent' : ''
+              }`
+            }
+            aria-label="My profile"
+          >
             <p className="truncate text-sm font-medium">{user?.full_name}</p>
             <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-          </div>
+          </NavLink>
           <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out">
             <LogOut className="size-4" />
           </Button>
@@ -89,7 +109,8 @@ export function AppShell({ role }: { role: Role }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4 md:px-6">
-          <span className="font-semibold md:hidden">HMS</span>
+          <BrandLogo className="size-7 text-primary md:hidden" />
+          <span className="sr-only md:hidden">Carthage Medical Center</span>
           <nav className="flex items-center gap-1 overflow-x-auto md:hidden">
             {items.map((item) => (
               <NavLink
@@ -108,6 +129,13 @@ export function AppShell({ role }: { role: Role }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <NavLink
+              to={`/${role}/profile`}
+              aria-label="My profile"
+              className="rounded-md p-2 text-muted-foreground hover:text-foreground md:hidden"
+            >
+              <CircleUserRound className="size-4" />
+            </NavLink>
             <RoleBadge role={role} />
             <Button variant="ghost" size="sm" onClick={handleLogout} className="md:hidden">
               <LogOut className="size-4" />
@@ -116,7 +144,9 @@ export function AppShell({ role }: { role: Role }) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 md:px-6">
-          <Outlet />
+          <Suspense fallback={<PageLoading rows={4} />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
