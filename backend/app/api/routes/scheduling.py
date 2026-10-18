@@ -36,6 +36,12 @@ router = APIRouter()
 
 # --- Helpers ---------------------------------------------------------------
 
+def _slot_clock() -> datetime:
+    """Naive local wall-clock time: the clock slot times are stored in (the
+    seed and bulk creation both build slots from local dates)."""
+    return datetime.now()
+
+
 async def _patient_profile_id(db: AsyncIOMotorDatabase, user: dict) -> int:
     """Profile id of the logged-in patient; patients without a profile can't act."""
     profile = await db["patient_profiles"].find_one({"user_id": user["_id"]})
@@ -214,7 +220,8 @@ async def list_doctor_slots(doctor_id: int,
                             free_only: bool = Query(default=False, alias="free"),
                             db: AsyncIOMotorDatabase = Depends(get_db),
                             _user: dict = Depends(get_current_user)):
-    """Slots for one doctor. `?free=true` returns only bookable slots."""
+    """Slots for one doctor. `?free=true` returns only bookable slots: not
+    booked and not yet started."""
     if await db["doctor_profiles"].find_one({"_id": doctor_id}) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doctor not found")
     slots = await db["availability_slots"].find(
@@ -226,6 +233,7 @@ async def list_doctor_slots(doctor_id: int,
         (await db["appointments"].find(
             {"doctor_id": doctor_id, "slot_id": {"$exists": True}}
         ).to_list(length=None))}
+    now = _slot_clock()
     return [
         SlotOut(
             id=slot["_id"], doctor_id=slot["doctor_id"],
@@ -233,7 +241,8 @@ async def list_doctor_slots(doctor_id: int,
             is_free=slot["_id"] not in booked_slot_ids,
         )
         for slot in slots
-        if not free_only or slot["_id"] not in booked_slot_ids
+        if not free_only
+        or (slot["_id"] not in booked_slot_ids and slot["starts_at"] > now)
     ]
 
 
@@ -267,6 +276,11 @@ async def create_slots(doctor_id: int, payload: SlotBulkIn,
     if not windows:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "Window yields no slots")
+    if windows[0][0] <= _slot_clock():
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Slot range starts in the past ({windows[0][0]:%Y-%m-%d %H:%M}) - "
+            "pick a future date or start time")
 
     # One query covers the whole requested span; the per-slot overlap loop is
     # replaced by checking the created windows against the fetched overlap set
@@ -318,8 +332,8 @@ async def book_appointment(payload: AppointmentCreateIn,
                            user: dict = Depends(get_current_user)):
     """Patients self-book; Admin books walk-ins by patient id (ADR-0009).
 
-    Past slots are bookable on purpose — it is how the historic completed
-    visit for the demo gets produced.
+    Only slots that haven't started yet are bookable. The seed's historic
+    completed visits are inserted directly, not through this endpoint.
     """
     if user["role"] == UserRole.PATIENT.value:
         patient_id = await _patient_profile_id(db, user)
@@ -337,6 +351,9 @@ async def book_appointment(payload: AppointmentCreateIn,
             status.HTTP_403_FORBIDDEN, "Requires one of: admin, patient")
 
     slot = await _slot_or_404(db, payload.slot_id)
+    if slot["starts_at"] <= _slot_clock():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Slot has already started - pick a future slot")
     # The sparse unique index means a `slot_id` on ANY appointment doc equals
     # "occupied" — no status filter, matching spec §4 row 2.
     if await db["appointments"].find_one({"slot_id": payload.slot_id}):
